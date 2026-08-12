@@ -9,20 +9,13 @@ services:
     working_dir: /var/www/html
     volumes:
       - ./:/var/www/html
-    environment:
-      - DB_CONNECTION=mysql
-      - DB_HOST=mysql
-      - DB_PORT=3306
-      - DB_DATABASE=notas
-      - DB_USERNAME=notas
-      - DB_PASSWORD=secret
-      - MAIL_MAILER=smtp
-      - MAIL_HOST=mailpit
-      - MAIL_PORT=1025
-      - MAIL_FROM_ADDRESS=noreply@notas.test
-      # Emissor falso por padrão no ambiente local: emitir nota de verdade
-      # sem querer é problema fiscal, não bug.
-      - FISCAL_EMISSOR=fake
+    # NÃO declarar DB_* nem FISCAL_* aqui.
+    #
+    # Variável do contêiner vira variável do sistema, e o Laravel lê $_SERVER
+    # ANTES do que o phpunit.xml define, mesmo com force="true". Com
+    # DB_DATABASE=notas injetado aqui, a suíte inteira rodava contra o banco de
+    # DESENVOLVIMENTO e o apagava a cada rodada, sem avisar. A configuração do
+    # app mora no .env; o contêiner só fornece a rede e o PHP.
     depends_on:
       mysql:
         condition: service_healthy
