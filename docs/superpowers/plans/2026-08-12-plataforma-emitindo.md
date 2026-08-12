@@ -12,6 +12,12 @@
 
 **Fora deste plano:** a API para os SaaS, o retorno assinado e a virada do TreinaEdu. Isso é o plano 2, escrito depois que este estiver rodando em produção. Este plano deixa o caminho pronto (o mesmo serviço de emissão que a tela usa será o que a API vai usar), mas não constrói rota de API nenhuma.
 
+## Convenções que valem em todas as tasks
+
+- **Todo teste de feature usa `RefreshDatabase`.** Os trechos abaixo mostram só os métodos; a classe sempre tem `use RefreshDatabase;`. Sem isso, testes que contam linhas enxergam o que o teste anterior deixou.
+- **Validação de CPF/CNPJ:** copie `app/Rules/ValidCpfCnpj.php` do TreinaEdu (`/Users/joaofilipibritto/Projetos/treinaedu/app/Rules/ValidCpfCnpj.php`) junto com o teste dele. Laravel não tem regra para documento brasileiro, e escrever dígito verificador de novo é retrabalho com chance de erro.
+- **Rodar os testes:** `php artisan test` (o `phpunit.xml` já aponta para o banco de teste).
+
 ---
 
 ## Estrutura de arquivos
@@ -39,19 +45,20 @@ Por que `EmitirNota` e `FecharNota` são serviços separados dos controllers: no
 
 **Files:**
 - Create: tudo que o Laravel gera, na raiz do repositório
-- Create: `.env.example`, `.env.testing`
 - Modify: `phpunit.xml`
 
 - [ ] **Step 1: Gerar o Laravel fora do repositório e trazer para dentro**
 
-O diretório já tem `.git`, `README.md` e `docs/`, e o `create-project` exige pasta vazia.
+O diretório já tem `.git`, `README.md` e `docs/`, e o `create-project` exige pasta vazia. O `--ignore-existing` protege o README e a documentação, que são o único conteúdo do repositório hoje: sem ele, o README do projeto vira o README padrão do Laravel.
 
 ```bash
 cd /Users/joaofilipibritto/Projetos
 composer create-project laravel/laravel /tmp/nhf-skeleton "^11.0" --no-interaction
-rsync -a --exclude='.git' /tmp/nhf-skeleton/ notashelpflux/
+rsync -a --ignore-existing --exclude='.git' /tmp/nhf-skeleton/ notashelpflux/
 rm -rf /tmp/nhf-skeleton
 ```
+
+Conferir depois: `head -3 notashelpflux/README.md` deve mostrar o título da plataforma, não "About Laravel".
 
 - [ ] **Step 2: Instalar Breeze (Blade) e Tailwind**
 
@@ -191,7 +198,10 @@ return [
             'item_lista_servico' => '1.05',
             'codigo_tributacao_nacional' => '010501',
             'nbs' => null,
-            'descricao_padrao' => 'Mensalidade referente ao uso da plataforma',
+            // :produto é trocado por quem emite (TreinaEdu, HelpDiet). Só
+            // passa a ser usado no plano 2; na fase 1 nenhuma nota de software
+            // é emitida por aqui.
+            'descricao_padrao' => 'Mensalidade referente ao uso da plataforma :produto',
             'local_prestacao_padrao' => 'prestador',
             'aliquota' => 2.01,
         ],
@@ -237,6 +247,10 @@ git commit -m "feat(fiscal): perfis de servico versionados, conferidos contra no
 - [ ] **Step 1: Escrever o teste que falha**
 
 ```php
+use Illuminate\Foundation\Testing\RefreshDatabase;
+// ...
+use RefreshDatabase;
+
 public function test_a_mesma_referencia_da_mesma_origem_nao_entra_duas_vezes(): void
 {
     Nota::factory()->create(['origem' => 'treinaedu', 'referencia_externa' => 'inv-1']);
@@ -336,7 +350,10 @@ class Nota extends Model
         return ['valor' => 'decimal:2', 'emitida_em' => 'datetime'];
     }
 
-    public function perfil(): array
+    // Nome diferente da coluna `perfil` de propósito: um método `perfil()`
+    // convivendo com o atributo `perfil` confunde leitura e faz o Eloquent
+    // tentar resolver relação quando o modelo não está hidratado.
+    public function perfilDeServico(): array
     {
         return config("fiscal.perfis.{$this->perfil}");
     }
@@ -416,6 +433,12 @@ use App\Models\Nota;
  *   ['status' => 'processando'|'emitida'|'erro'|'cancelada',
  *    'numero' => ?string, 'chave_acesso' => ?string,
  *    'pdf_url' => ?string, 'xml_url' => ?string, 'erro' => ?string]
+ *
+ * CONTRATO ADICIONAL, e ele não é opcional: `enviar()` grava
+ * `notas.notaas_invoice_id` com o id que o emissor devolveu. Esse id é o
+ * ÚNICO elo entre a nossa linha e a nota do emissor. Sem ele o webhook chega
+ * e não há como saber de que nota ele fala, e a reconciliação não tem o que
+ * consultar. Vale para as duas implementações, inclusive a falsa.
  */
 interface Emissor
 {
@@ -429,7 +452,20 @@ interface Emissor
 
 - [ ] **Step 4: Escrever o emissor falso**
 
-Ele aceita tudo e devolve "processando", como o real. Quem quiser simular o desfecho usa `EmissorFalso::responderConsultaCom([...])` no teste.
+Ele aceita tudo, grava um id de mentira (`'fake-'.$nota->id`) e devolve "processando", como o real. Quem quiser simular o desfecho usa `EmissorFalso::responderConsultaCom([...])` no teste.
+
+O teste do id faz parte desta task, senão as tasks 8 e 13 quebram sem motivo aparente:
+
+```php
+public function test_o_emissor_falso_tambem_grava_o_id(): void
+{
+    $nota = Nota::factory()->create();
+
+    app(Emissor::class)->enviar($nota);
+
+    $this->assertNotNull($nota->fresh()->notaas_invoice_id);
+}
+```
 
 - [ ] **Step 5: Ligar no container**
 
@@ -627,6 +663,8 @@ Expected: FAIL
 
 `POST /emitir` com header `x-api-key`, guardando `invoiceId`. `GET /invoices/{id}/status` para consultar. Um método privado `traduzir()` mapeando `issued|authorized → emitida`, `error|rejected → erro`, `cancelled|canceled → cancelada`, `queued|processing → processando`. Um `semPrefixo()` tirando `NFS`. Em caso de erro, `Log::error` com o payload junto (não há segredo nele: o prestador não viaja no corpo).
 
+A chave e o número saem de três campos possíveis, na ordem `chNFSe`, `nNFSe`, `numeroNfe`, como no driver do TreinaEdu: a Notaas já usou nomes diferentes, e cair no terceiro é mais barato que descobrir em produção que o número chegou nulo.
+
 - [ ] **Step 4: Rodar e ver passar**
 
 Run: `php artisan test --filter=NotaasEmissorTest`
@@ -710,13 +748,15 @@ public function test_o_tipo_do_evento_e_aceito_no_corpo_ou_no_header(): void
 
 HMAC-SHA256 do corpo cru contra `X-Notaas-Signature`, com `hash_equals`. Evento do corpo ou do header `X-Notaas-Event`. Acha a nota por `notaas_invoice_id`, com `referencia` como plano B. Responde 200 sempre que a requisição é legítima, para o emissor não reenfileirar entrega de nota que não conhecemos.
 
-Rota fora do middleware de CSRF e de sessão:
+Rota fora do CSRF:
 
 ```php
 Route::post('/webhooks/notaas', [NotaasWebhookController::class, 'handle'])
     ->name('webhooks.notaas')
-    ->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class]);
+    ->withoutMiddleware(\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class);
 ```
+
+**Não troque `VerifyCsrfToken` por `ValidateCsrfToken` achando que está consertando.** Parece errado porque o grupo `web` do Laravel 11 aplica `ValidateCsrfToken`, mas a exclusão funciona: `Router::resolveMiddleware` usa `isSubclassOf` (`Illuminate/Routing/Router.php:858`) e `ValidateCsrfToken extends VerifyCsrfToken`. É a mesma linha que segura quatro webhooks do TreinaEdu em produção há meses. O teste de assinatura inválida desta task prova isso de qualquer forma: se o CSRF estivesse ativo, a resposta seria 419 e não 401.
 
 - [ ] **Step 5: Commit**
 
@@ -738,23 +778,26 @@ Sem cadastro aberto: dois usuários, criados por comando (spec §7).
 
 - [ ] **Step 1: Escrever os testes que falham**
 
+Só sobre acesso. A lista de notas ainda não existe (é a task 11), e o teste de escopo por papel mora lá.
+
 ```php
 public function test_nao_existe_cadastro_publico(): void
 {
     $this->get('/register')->assertNotFound();
+    $this->post('/register', [])->assertNotFound();
 }
 
-public function test_visitante_nao_ve_a_lista_de_notas(): void
-{
-    $this->get('/notas')->assertRedirect('/login');
-}
-
-public function test_emissor_ve_so_as_notas_manuais_e_admin_ve_todas(): void
+public function test_usuario_criado_por_comando_consegue_entrar(): void
 ```
 
-- [ ] **Step 2 a 4: falhar, implementar, passar**
+- [ ] **Step 2: Rodar e ver falhar**
 
-Coluna `papel` (`admin` | `emissor`), default `emissor`. Comando:
+Run: `php artisan test --filter=AcessoTest`
+Expected: FAIL, `/register` responde 200.
+
+- [ ] **Step 3: Implementar**
+
+Coluna `papel` (`admin` | `emissor`), default `emissor`. Tirar as rotas de registro de `routes/auth.php`. Comando:
 
 ```bash
 php artisan usuario:criar "Nome" email@exemplo.com --papel=emissor
@@ -762,7 +805,20 @@ php artisan usuario:criar "Nome" email@exemplo.com --papel=emissor
 
 Ele sorteia a senha, imprime uma vez e não guarda em lugar nenhum.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 4: Apagar o teste de registro que o Breeze trouxe**
+
+```bash
+rm tests/Feature/Auth/RegistrationTest.php
+```
+
+Ele afirma que existe cadastro público, que é exatamente o que esta task remove. Deixá-lo ali quebra a suíte que a task 1 deixou verde, por um motivo que não é defeito: é decisão de produto (spec §7).
+
+- [ ] **Step 5: Rodar a suíte inteira e ver passar**
+
+Run: `php artisan test`
+Expected: PASS
+
+- [ ] **Step 6: Commit**
 
 ```bash
 git commit -am "feat(acesso): papeis admin e emissor, sem cadastro publico"
@@ -817,6 +873,10 @@ git commit -am "feat(tela): emissao manual sem jargao fiscal"
 
 ```php
 public function test_a_lista_mostra_situacao_e_os_links_de_pdf_e_xml(): void
+
+public function test_visitante_nao_ve_a_lista_de_notas(): void
+
+public function test_emissor_ve_so_as_notas_manuais_e_admin_ve_todas(): void
 
 /**
  * As quatro situações aparecem como são. Nota recusada não pode se passar por
@@ -912,7 +972,26 @@ npx playwright install chromium
 
 O `webServer` do Playwright sobe o app com `FISCAL_EMISSOR=fake`. **A chave real da Notaas nunca entra no ambiente de E2E.**
 
-- [ ] **Step 2: Escrever os specs**
+- [ ] **Step 2: Resolver o login antes dos specs**
+
+Não há cadastro público e a senha do comando é sorteada, então o Playwright não teria como entrar. Criar `database/seeders/E2ESeeder.php` com um usuário de senha conhecida e rodá-lo no `globalSetup`:
+
+```php
+User::updateOrCreate(
+    ['email' => 'emissor@e2e.test'],
+    ['name' => 'Emissor E2E', 'papel' => 'emissor', 'password' => Hash::make('senha-e2e')],
+);
+```
+
+O seeder tem uma trava na primeira linha, porque usuário com senha conhecida em produção é conta aberta:
+
+```php
+if (! app()->environment(['local', 'testing', 'e2e'])) {
+    throw new \RuntimeException('E2ESeeder não roda fora de teste.');
+}
+```
+
+- [ ] **Step 3: Escrever os specs**
 
 ```ts
 test('emite uma nota de nutrição e ela aparece na lista', ...)
@@ -920,12 +999,12 @@ test('repetir nota abre o formulário com o cliente preenchido', ...)
 test('o CEP preenche cidade, UF e sugere o local do atendimento', ...)
 ```
 
-- [ ] **Step 3: Rodar**
+- [ ] **Step 4: Rodar**
 
 Run: `npx playwright test`
 Expected: 3 passed
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 5: Commit**
 
 ```bash
 git commit -am "test(e2e): emissao manual de ponta a ponta, sem tocar o emissor real"
