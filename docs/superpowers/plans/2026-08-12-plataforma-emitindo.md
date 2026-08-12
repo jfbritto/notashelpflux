@@ -454,6 +454,8 @@ interface Emissor
 
 Ele aceita tudo, grava um id de mentira (`'fake-'.$nota->id`) e devolve "processando", como o real. Quem quiser simular o desfecho usa `EmissorFalso::responderConsultaCom([...])` no teste.
 
+Ele também tem uma trava: `EmissorFalso::proibirEnvio()` faz `enviar()` lançar exceção. Serve para provar, na task 13, que a reconciliação **consulta e nunca emite**. Sem isso, aquele teste passaria por coincidência (ninguém chamou `enviar()`) em vez de por garantia (chamar seria erro).
+
 O teste do id faz parte desta task, senão as tasks 8 e 13 quebram sem motivo aparente:
 
 ```php
@@ -855,6 +857,8 @@ public function test_valor_zerado_e_documento_invalido_sao_recusados(): void
 
 O formulário tem: cliente (CPF/CNPJ, nome, e-mail), endereço (CEP preenche o resto), "onde o atendimento foi feito" (sugerindo a cidade do cliente), valor e descrição (vinda do perfil, editável). O perfil vem fixo do controller, nunca do request.
 
+Nesta task o campo de CEP ainda **não preenche nada**: a busca é a task 12. Os campos de endereço são digitáveis desde já, e nenhum teste daqui cobre a busca. É comportamento esperado, não defeito, e a tela funciona inteira sem ela.
+
 - [ ] **Step 5: Commit**
 
 ```bash
@@ -939,7 +943,9 @@ public function test_nota_recem_enviada_nao_e_consultada(): void
  */
 public function test_a_reconciliacao_nunca_emite(): void
 {
-    // O emissor de mentira lança exceção se enviar() for chamado.
+    EmissorFalso::proibirEnvio(); // enviar() passa a lançar exceção (task 4)
+
+    $this->artisan('notas:reconciliar')->assertSuccessful();
 }
 ```
 
@@ -970,7 +976,18 @@ npm install -D @playwright/test
 npx playwright install chromium
 ```
 
-O `webServer` do Playwright sobe o app com `FISCAL_EMISSOR=fake`. **A chave real da Notaas nunca entra no ambiente de E2E.**
+O `webServer` do Playwright sobe o app com o emissor falso. As duas variáveis vão **no bloco `env` do próprio `webServer`**, não só no `.env.e2e`: um arquivo de ambiente só é lido quando `APP_ENV` já vale `e2e`, e a garantia mais importante deste projeto não pode depender dessa ordem.
+
+```ts
+webServer: {
+  command: 'php artisan serve --port=8300',
+  url: 'http://127.0.0.1:8300',
+  env: { APP_ENV: 'e2e', FISCAL_EMISSOR: 'fake', NOTAAS_API_KEY: '' },
+  reuseExistingServer: !process.env.CI,
+},
+```
+
+**A chave real da Notaas nunca entra no ambiente de E2E**, e por isso ela vai explicitamente vazia acima: se algum caminho escapar do emissor falso, ele falha por falta de chave em vez de emitir uma nota de verdade.
 
 - [ ] **Step 2: Resolver o login antes dos specs**
 
