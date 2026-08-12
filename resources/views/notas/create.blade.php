@@ -7,8 +7,8 @@
         $inicial = [
             'perfil' => old('perfil', $modelo->perfil ?? 'nutricao'),
             // O que cada perfil sugere: o texto do serviço e onde ele foi
-            // prestado. Nutrição acontece onde o cliente está; software sai do
-            // estabelecimento da empresa.
+            // prestado. Atendimento acontece onde o cliente está;
+            // desenvolvimento sai do estabelecimento da empresa.
             'perfis' => collect($perfis)->map(fn ($p) => [
                 'rotulo' => $p['rotulo'],
                 'descricao' => $p['descricao_padrao'],
@@ -80,6 +80,7 @@
                             </label>
                             <input id="tomador_documento" name="tomador_documento" inputmode="numeric"
                                    x-model="documento" @input="documento = mascararDocumento(documento)"
+                                   :placeholder="ehPj ? '00.000.000/0000-00' : '000.000.000-00'"
                                    class="{{ $campo }}">
                             @error('tomador_documento') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                         </div>
@@ -89,6 +90,7 @@
                                 <span x-text="ehPj ? 'Razão social' : 'Nome completo'"></span> <span class="text-red-500">*</span>
                             </label>
                             <input id="tomador_nome" name="tomador_nome" class="{{ $campo }}"
+                                   :placeholder="ehPj ? 'Como registrado na Receita' : 'Nome completo, como no documento'"
                                    value="{{ old('tomador_nome', $modelo->tomador_nome ?? '') }}">
                             @error('tomador_nome') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                         </div>
@@ -96,6 +98,7 @@
                         <div class="sm:col-span-2">
                             <label for="tomador_email" class="mb-1.5 block text-sm font-medium text-gray-700">E-mail</label>
                             <input id="tomador_email" name="tomador_email" type="email" class="{{ $campo }}"
+                                   placeholder="Para onde a nota vai (opcional)"
                                    value="{{ old('tomador_email', $modelo->tomador_email ?? '') }}">
                         </div>
                     </div>
@@ -108,26 +111,26 @@
                     <div class="grid grid-cols-1 gap-4 sm:grid-cols-6">
                         <div class="sm:col-span-2">
                             <label for="tomador_cep" class="mb-1.5 block text-sm font-medium text-gray-700">CEP</label>
-                            <input id="tomador_cep" name="tomador_cep" inputmode="numeric" class="{{ $campo }}"
+                            <input id="tomador_cep" name="tomador_cep" inputmode="numeric" class="{{ $campo }}" placeholder="00000-000"
                                    x-model="cep" @input="cep = mascararCep(cep)" @blur="buscarCep()">
                             <p class="mt-1 text-xs text-red-600" x-show="erroCep" x-text="erroCep" x-cloak></p>
                         </div>
                         <div class="sm:col-span-4">
                             <label for="tomador_logradouro" class="mb-1.5 block text-sm font-medium text-gray-700">Logradouro</label>
-                            <input id="tomador_logradouro" name="tomador_logradouro" class="{{ $campo }}" x-model="logradouro">
+                            <input id="tomador_logradouro" name="tomador_logradouro" class="{{ $campo }}" x-model="logradouro" placeholder="Rua, avenida, praça">
                         </div>
                         <div class="sm:col-span-2">
                             <label for="tomador_numero" class="mb-1.5 block text-sm font-medium text-gray-700">Número</label>
-                            <input id="tomador_numero" name="tomador_numero" class="{{ $campo }}"
+                            <input id="tomador_numero" name="tomador_numero" class="{{ $campo }}" placeholder="123"
                                    value="{{ old('tomador_numero', $modelo->tomador_numero ?? '') }}">
                         </div>
                         <div class="sm:col-span-4">
                             <label for="tomador_bairro" class="mb-1.5 block text-sm font-medium text-gray-700">Bairro</label>
-                            <input id="tomador_bairro" name="tomador_bairro" class="{{ $campo }}" x-model="bairro">
+                            <input id="tomador_bairro" name="tomador_bairro" class="{{ $campo }}" x-model="bairro" placeholder="Centro">
                         </div>
                         <div class="sm:col-span-4">
                             <label for="tomador_cidade" class="mb-1.5 block text-sm font-medium text-gray-700">Cidade <span class="text-red-500">*</span></label>
-                            <input id="tomador_cidade" name="tomador_cidade" class="{{ $campo }}"
+                            <input id="tomador_cidade" name="tomador_cidade" class="{{ $campo }}" placeholder="Vitória"
                                    x-model="cidade" @input="sugerirLocal()">
                             @error('tomador_cidade') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                         </div>
@@ -154,7 +157,7 @@
                             <label for="local_prestacao_nome" class="mb-1.5 block text-sm font-medium text-gray-700">
                                 Onde o atendimento foi feito <span class="text-red-500">*</span>
                             </label>
-                            <input id="local_prestacao_nome" name="local_prestacao_nome" class="{{ $campo }}"
+                            <input id="local_prestacao_nome" name="local_prestacao_nome" class="{{ $campo }}" placeholder="Cidade do atendimento"
                                    x-model="localNome">
                             <p class="mt-1 text-xs text-gray-500">Já vem com a cidade do cliente. Mude se o atendimento foi em outro lugar.</p>
                             <input type="hidden" name="local_prestacao_ibge" :value="localIbge">
@@ -170,7 +173,8 @@
 
                         <div class="sm:col-span-2">
                             <label for="descricao" class="mb-1.5 block text-sm font-medium text-gray-700">Descrição do serviço <span class="text-red-500">*</span></label>
-                            <textarea id="descricao" name="descricao" rows="2" class="{{ $campo }}" x-model="descricao"></textarea>
+                            <textarea id="descricao" name="descricao" rows="2" class="{{ $campo }}" x-model="descricao"
+                                      placeholder="O que sai escrito na nota"></textarea>
                             @error('descricao') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                         </div>
                     </div>

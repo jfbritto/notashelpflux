@@ -3,6 +3,10 @@
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
+        {{-- A plataforma é clara, e só. Sem isto o navegador escurece a
+             página por conta própria quando o sistema está em modo escuro, e o
+             resultado é um cinza lavado que não é o desenho de ninguém. --}}
+        <meta name="color-scheme" content="light">
         <meta name="csrf-token" content="{{ csrf_token() }}">
 
         <title>{{ config('app.name', 'Laravel') }}</title>
