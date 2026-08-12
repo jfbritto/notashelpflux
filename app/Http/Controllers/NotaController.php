@@ -39,7 +39,8 @@ class NotaController extends Controller
 
         return view('notas.create', [
             'modelo' => $modelo,
-            'perfil' => config('fiscal.perfis.nutricao'),
+            'perfis' => config('fiscal.perfis'),
+            'prestador' => config('fiscal.prestador'),
         ]);
     }
 
@@ -53,8 +54,9 @@ class NotaController extends Controller
         $nota = $emitirNota->emitir(array_merge($dados, [
             'origem' => 'manual',
             'referencia_externa' => null,
-            // O perfil vem daqui, nunca do formulário: é dado fiscal.
-            'perfil' => 'nutricao',
+            // O perfil vem do formulário, mas só pode ser um dos definidos em
+            // config/fiscal.php (a validação recusa o resto). Os códigos de
+            // tributação continuam saindo do servidor, nunca do navegador.
             'competencia' => now()->format('Y-m'),
             'tomador_documento' => preg_replace('/\D/', '', $dados['tomador_documento']),
             'tomador_cep' => preg_replace('/\D/', '', (string) ($dados['tomador_cep'] ?? '')) ?: null,

@@ -51,10 +51,9 @@ return [
             'item_lista_servico' => '1.05',
             'codigo_tributacao_nacional' => '010501',
             'nbs' => null,
-            // :produto é trocado por quem emite (TreinaEdu, HelpDiet). Só passa
-            // a ser usado quando a API existir; hoje nenhuma nota de software
-            // sai por aqui.
-            'descricao_padrao' => 'Mensalidade referente ao uso da plataforma :produto',
+            // Na emissão manual quem escreve o resto é quem emite; pela API,
+            // o SaaS manda a descrição dele.
+            'descricao_padrao' => 'Licenciamento de uso de software',
             'local_prestacao_padrao' => 'prestador',
             'aliquota' => 2.01,
         ],

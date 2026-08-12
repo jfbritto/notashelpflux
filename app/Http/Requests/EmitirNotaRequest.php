@@ -19,6 +19,11 @@ class EmitirNotaRequest extends FormRequest
     public function rules(): array
     {
         return [
+            // O formulário escolhe ENTRE os perfis definidos no servidor, e
+            // nunca os códigos em si. Um perfil desconhecido é recusado aqui,
+            // então não há como emitir com tributação inventada pelo navegador.
+            'perfil' => ['required', Rule::in(array_keys(config('fiscal.perfis')))],
+
             'tomador_tipo' => ['required', Rule::in(['pf', 'pj'])],
             'tomador_documento' => ['required', 'string', new ValidCpfCnpj],
             'tomador_nome' => ['required', 'string', 'max:255'],
@@ -46,6 +51,8 @@ class EmitirNotaRequest extends FormRequest
     public function messages(): array
     {
         return [
+            'perfil.required' => 'Escolha o tipo de serviço da nota.',
+            'perfil.in' => 'Esse tipo de serviço não existe.',
             'valor.min' => 'O valor da nota precisa ser maior que zero.',
             'local_prestacao_ibge.required' => 'Escolha onde o atendimento foi feito (o CEP preenche o município).',
             'tomador_cidade.required' => 'A cidade do cliente é obrigatória na nota.',

@@ -57,6 +57,60 @@ test.describe('emissão manual', () => {
     await expect(page.getByText('R$ 2.100,00')).toBeVisible();
   });
 
+  /**
+   * Trocar o tipo troca a tributação da nota. Na tela isso precisa aparecer
+   * como escolha de serviço, e trocar junto o texto e onde o serviço consta
+   * como prestado: nutrição acontece onde o cliente está, software sai do
+   * estabelecimento da empresa.
+   */
+  test('o tipo de serviço muda a descrição e o local', async ({ page }) => {
+    await page.goto('/notas/nova');
+
+    // Nutrição é o padrão.
+    await expect(page.locator('#descricao')).toHaveValue('Atendimentos nutricionais');
+
+    await page.locator('#tomador_cep').fill('29055450');
+    await page.locator('#tomador_cep').blur();
+    await expect(page.locator('#local_prestacao_nome')).toHaveValue('Vitória');
+
+    // Software: o serviço passa a constar como prestado na sede da empresa.
+    await page.getByRole('button', { name: 'Licenciamento de software' }).click();
+    await expect(page.locator('#descricao')).toHaveValue('Licenciamento de uso de software');
+    await expect(page.locator('#local_prestacao_nome')).toHaveValue('Santa Maria de Jetibá');
+
+    await page.getByRole('button', { name: 'Atendimento nutricional' }).click();
+    await expect(page.locator('#local_prestacao_nome')).toHaveValue('Vitória');
+  });
+
+  test('o texto escrito à mão não é perdido ao trocar o tipo', async ({ page }) => {
+    await page.goto('/notas/nova');
+
+    await page.locator('#descricao').fill('Consultoria do projeto de agosto');
+    await page.getByRole('button', { name: 'Licenciamento de software' }).click();
+
+    await expect(page.locator('#descricao')).toHaveValue('Consultoria do projeto de agosto');
+  });
+
+  test('emite uma nota de software com a tributação certa', async ({ page }) => {
+    await page.goto('/notas/nova');
+
+    await page.getByRole('button', { name: 'Licenciamento de software' }).click();
+    await page.locator('#tomador_documento').fill('11222333000181');
+    await page.locator('#tomador_nome').fill('Empresa Cliente Ltda');
+    await page.locator('#tomador_cep').fill('29055450');
+    await page.locator('#tomador_cep').blur();
+    await expect(page.locator('#tomador_cidade')).toHaveValue('Vitória');
+    await page.locator('#tomador_numero').fill('78');
+    await page.locator('#valor').fill('500.00');
+
+    await page.getByRole('button', { name: 'Emitir nota' }).click();
+
+    await expect(page.getByText(/Nota enviada para emissão/i)).toBeVisible();
+    await expect(page.getByText('Empresa Cliente Ltda')).toBeVisible();
+    // O serviço consta prestado na sede, não na cidade do cliente.
+    await expect(page.getByText('Santa Maria de Jetibá')).toBeVisible();
+  });
+
   test('nenhum código fiscal aparece na tela', async ({ page }) => {
     await page.goto('/notas/nova');
 

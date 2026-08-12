@@ -24,6 +24,7 @@ class EmissaoManualTest extends TestCase
     private function formulario(array $extra = []): array
     {
         return array_merge([
+            'perfil' => 'nutricao',
             'tomador_tipo' => 'pj',
             'tomador_documento' => '11.222.333/0001-81',
             'tomador_nome' => 'Clínica Exemplo Ltda',
@@ -64,15 +65,53 @@ class EmissaoManualTest extends TestCase
     }
 
     /**
-     * Nenhum código fiscal é digitado. Se um dia a tela passar a aceitar
-     * `perfil` do formulário, a nota sai com o código que o navegador mandar.
+     * A tela escolhe ENTRE os perfis do servidor, nunca os códigos em si.
      */
-    public function test_a_tela_ignora_perfil_vindo_do_formulario(): void
+    public function test_a_tela_emite_nos_dois_tipos_de_servico(): void
+    {
+        $this->actingAs($this->emissora)->post(route('notas.store'), $this->formulario(['perfil' => 'software']));
+        $this->assertSame('software', Nota::first()->perfil);
+        $this->assertSame('010501', Nota::first()->perfilDeServico()['codigo_tributacao_nacional']);
+
+        Nota::query()->delete();
+
+        $this->actingAs($this->emissora)->post(route('notas.store'), $this->formulario(['perfil' => 'nutricao']));
+        $this->assertSame('041001', Nota::first()->perfilDeServico()['codigo_tributacao_nacional']);
+    }
+
+    /**
+     * Perfil inventado é recusado. Sem isso, o navegador escolheria a
+     * tributação da nota.
+     */
+    public function test_perfil_desconhecido_e_recusado(): void
     {
         $this->actingAs($this->emissora)
-            ->post(route('notas.store'), $this->formulario(['perfil' => 'software']));
+            ->post(route('notas.store'), $this->formulario(['perfil' => 'imposto-zero']))
+            ->assertSessionHasErrors('perfil');
 
-        $this->assertSame('nutricao', Nota::first()->perfil);
+        $this->assertSame(0, Nota::count());
+    }
+
+    public function test_sem_tipo_de_servico_a_nota_nao_sai(): void
+    {
+        $this->actingAs($this->emissora)
+            ->post(route('notas.store'), $this->formulario(['perfil' => '']))
+            ->assertSessionHasErrors('perfil');
+    }
+
+    /**
+     * O código do serviço acompanha o tipo até dentro do corpo mandado ao
+     * emissor, que é onde ele vira nota de verdade.
+     */
+    public function test_o_codigo_no_payload_acompanha_o_tipo_escolhido(): void
+    {
+        $this->actingAs($this->emissora)->post(route('notas.store'), $this->formulario(['perfil' => 'software']));
+
+        $servico = (new \App\Services\Emissor\PayloadDaNota)->montar(Nota::first())['servico'];
+
+        $this->assertSame('010501', $servico['codigo']);
+        $this->assertSame('1.05', $servico['itemListaServico']);
+        $this->assertArrayNotHasKey('nbs', $servico); // software não tem NBS
     }
 
     /**

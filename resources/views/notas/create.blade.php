@@ -5,6 +5,17 @@
 
     @php
         $inicial = [
+            'perfil' => old('perfil', $modelo->perfil ?? 'nutricao'),
+            // O que cada perfil sugere: o texto do serviço e onde ele foi
+            // prestado. Nutrição acontece onde o cliente está; software sai do
+            // estabelecimento da empresa.
+            'perfis' => collect($perfis)->map(fn ($p) => [
+                'rotulo' => $p['rotulo'],
+                'descricao' => $p['descricao_padrao'],
+                'localNoPrestador' => $p['local_prestacao_padrao'] === 'prestador',
+            ]),
+            'prestadorNome' => $prestador['nome_municipio'],
+            'prestadorIbge' => $prestador['codigo_municipio'],
             'tipo' => old('tomador_tipo', $modelo->tomador_tipo ?? 'pj'),
             'documento' => old('tomador_documento', $modelo->tomador_documento ?? ''),
             'cep' => old('tomador_cep', $modelo->tomador_cep ?? ''),
@@ -28,6 +39,23 @@
 
             <form method="POST" action="{{ route('notas.store') }}" x-data="formularioDaNota(@js($inicial))">
                 @csrf
+
+                <div class="mb-6 rounded-xl bg-white p-6 shadow-sm">
+                    <h3 class="mb-1 text-sm font-semibold text-gray-800">Tipo de serviço</h3>
+                    <p class="mb-5 text-xs text-gray-500">Define a tributação da nota. Na dúvida, é o que você prestou.</p>
+
+                    <div class="flex flex-wrap gap-3">
+                        @foreach($perfis as $chave => $dados)
+                            <button type="button" @click="mudarPerfil('{{ $chave }}')"
+                                    :class="perfil === '{{ $chave }}' ? 'border-emerald-500 bg-emerald-50 text-emerald-800' : 'border-gray-200 text-gray-600 hover:border-gray-300'"
+                                    class="rounded-lg border px-4 py-3 text-left text-sm font-medium transition">
+                                {{ $dados['rotulo'] }}
+                            </button>
+                        @endforeach
+                    </div>
+                    <input type="hidden" name="perfil" :value="perfil">
+                    @error('perfil') <p class="mt-2 text-xs text-red-600">{{ $message }}</p> @enderror
+                </div>
 
                 <div class="mb-6 rounded-xl bg-white p-6 shadow-sm">
                     <h3 class="mb-1 text-sm font-semibold text-gray-800">Cliente</h3>
@@ -142,7 +170,7 @@
 
                         <div class="sm:col-span-2">
                             <label for="descricao" class="mb-1.5 block text-sm font-medium text-gray-700">Descrição do serviço <span class="text-red-500">*</span></label>
-                            <textarea id="descricao" name="descricao" rows="2" class="{{ $campo }}">{{ old('descricao', $modelo->descricao ?? $perfil['descricao_padrao']) }}</textarea>
+                            <textarea id="descricao" name="descricao" rows="2" class="{{ $campo }}" x-model="descricao"></textarea>
                             @error('descricao') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                         </div>
                     </div>
@@ -162,6 +190,9 @@
     <script>
         document.addEventListener('alpine:init', () => {
             Alpine.data('formularioDaNota', (inicial) => ({
+                perfil: inicial.perfil,
+                perfis: inicial.perfis,
+                descricao: @js(old('descricao', $modelo->descricao ?? null)),
                 tipo: inicial.tipo,
                 documento: inicial.documento,
                 cep: inicial.cep,
@@ -177,6 +208,27 @@
                 init() {
                     this.documento = this.mascararDocumento(this.documento);
                     this.cep = this.mascararCep(this.cep);
+
+                    if (!this.descricao) {
+                        this.descricao = this.perfis[this.perfil].descricao;
+                    }
+                    this.sugerirLocal();
+                },
+
+                /**
+                 * Trocar o tipo troca a tributação da nota, e junto com ela o
+                 * texto padrão e onde o serviço consta como prestado. O que a
+                 * pessoa escreveu à mão não é sobrescrito.
+                 */
+                mudarPerfil(chave) {
+                    const anterior = this.perfis[this.perfil].descricao;
+                    this.perfil = chave;
+
+                    if (!this.descricao || this.descricao === anterior) {
+                        this.descricao = this.perfis[chave].descricao;
+                    }
+
+                    this.sugerirLocal(true);
                 },
 
                 get ehPj() { return this.tipo === 'pj'; },
@@ -215,14 +267,26 @@
                     return d.length > 5 ? d.slice(0, 5) + '-' + d.slice(5) : d;
                 },
 
-                // O local do atendimento acompanha a cidade do cliente enquanto
-                // ninguém o alterar. Depois de alterado, para de seguir.
-                sugerirLocal() {
-                    if (!this.localNome || this.localNome === this.cidadeAnterior) {
-                        this.localNome = this.cidade;
-                        this.localIbge = this.ibge;
+                /**
+                 * Onde o serviço consta como prestado.
+                 *
+                 * Atendimento de nutrição acontece onde o cliente está;
+                 * software sai do estabelecimento da empresa. A sugestão segue
+                 * o tipo escolhido, e para de seguir assim que alguém escrever
+                 * ali à mão, porque aí a pessoa sabe algo que o sistema não
+                 * sabe (atendimento a domicílio, por exemplo).
+                 */
+                sugerirLocal(forcar = false) {
+                    const noPrestador = this.perfis[this.perfil].localNoPrestador;
+                    const nome = noPrestador ? inicial.prestadorNome : this.cidade;
+                    const ibge = noPrestador ? inicial.prestadorIbge : this.ibge;
+
+                    if (forcar || !this.localNome || this.localNome === this.ultimaSugestao) {
+                        this.localNome = nome;
+                        this.localIbge = ibge;
                     }
-                    this.cidadeAnterior = this.cidade;
+
+                    this.ultimaSugestao = nome;
                 },
 
                 async buscarCep() {
@@ -239,8 +303,10 @@
                         this.cidade = d.cidade || '';
                         this.uf = d.uf || '';
                         this.ibge = d.ibge || '';
-                        this.localNome = this.cidade;
-                        this.localIbge = this.ibge;
+                        // Passa pelo mesmo caminho da sugestão: numa nota de
+                        // software, achar o CEP do cliente não muda onde o
+                        // serviço foi prestado.
+                        this.sugerirLocal();
                     } catch (e) {
                         this.erroCep = 'A busca de CEP não respondeu. Preencha na mão.';
                     }
