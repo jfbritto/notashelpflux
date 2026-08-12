@@ -6,7 +6,9 @@
 
 **Architecture:** Laravel 11 com um emissor plugável (`Emissor`), igual ao que o TreinaEdu já usa. A Notaas assina e conversa com a prefeitura; nós montamos o payload, guardamos a nota e tratamos o retorno assíncrono. A emissão termina em três lugares (envio, webhook, reconciliação) e os três seguem a mesma regra: quem fecha a nota grava o desfecho, e só na transição de estado.
 
-**Tech Stack:** PHP 8.3, Laravel 11.31, Breeze (auth), Blade + Alpine 3 + Tailwind 3, MySQL 8, Vite 6, PHPUnit 11, Playwright 1.61.
+**Tech Stack:** PHP 8.4, **Laravel 13**, Breeze (auth), Blade + Alpine 3 + **Tailwind 4**, MySQL 8, Vite 8, PHPUnit, Playwright. Ambiente local em **Docker** (nginx 8004, MySQL 3311, Mailpit 8029).
+
+> **Desvio consciente do plano original, decidido na execução:** o plano pedia Laravel 11 para espelhar o TreinaEdu. O Composer **recusa** instalar qualquer versão do Laravel 11 hoje, porque a faixa inteira (11.31 a 11.55.1) tem advisories de segurança abertos. Um sistema novo que emite documento fiscal não nasce em framework com vulnerabilidade conhecida, então foi para a versão atual. O que muda na prática: Tailwind 4 configura tema em CSS e não em `tailwind.config.js`, e o `bootstrap/app.php` do Laravel 11 em diante continua igual, então as instruções de rota e middleware deste plano valem sem ajuste.
 
 **Fonte da verdade:** [o spec](../specs/2026-08-11-notas-helpflux-design.md). Leia as seções 3, 4 e 13 antes de começar: elas contêm decisões fiscais que erram caro e armadilhas já pagas uma vez no TreinaEdu.
 

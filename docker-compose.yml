@@ -1,0 +1,81 @@
+# Ambiente local. As portas são deslocadas em relação ao TreinaEdu (8003, 3310,
+# 1027/8027) para os dois projetos rodarem ao mesmo tempo na mesma máquina.
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: notas_app
+    working_dir: /var/www/html
+    volumes:
+      - ./:/var/www/html
+    environment:
+      - DB_CONNECTION=mysql
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_DATABASE=notas
+      - DB_USERNAME=notas
+      - DB_PASSWORD=secret
+      - MAIL_MAILER=smtp
+      - MAIL_HOST=mailpit
+      - MAIL_PORT=1025
+      - MAIL_FROM_ADDRESS=noreply@notas.test
+      # Emissor falso por padrão no ambiente local: emitir nota de verdade
+      # sem querer é problema fiscal, não bug.
+      - FISCAL_EMISSOR=fake
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - notas
+
+  nginx:
+    image: nginx:alpine
+    container_name: notas_nginx
+    ports:
+      - "8004:80"
+    volumes:
+      - ./:/var/www/html
+      - ./docker/nginx.conf:/etc/nginx/conf.d/default.conf
+    depends_on:
+      - app
+    networks:
+      - notas
+
+  mysql:
+    image: mysql:8.0
+    container_name: notas_mysql
+    ports:
+      - "3311:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: notas
+      MYSQL_USER: notas
+      MYSQL_PASSWORD: secret
+    volumes:
+      - notas_mysql_data:/var/lib/mysql
+      - ./docker/mysql-init:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    networks:
+      - notas
+
+  mailpit:
+    image: axllent/mailpit
+    container_name: notas_mailpit
+    ports:
+      - "1029:1025"
+      - "8029:8025"
+    networks:
+      - notas
+
+volumes:
+  notas_mysql_data:
+
+networks:
+  notas:
+    driver: bridge
