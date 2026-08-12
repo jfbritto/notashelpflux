@@ -20,9 +20,10 @@ class EmitirNotaRequest extends FormRequest
     {
         return [
             // O formulário escolhe ENTRE os perfis definidos no servidor, e
-            // nunca os códigos em si. Um perfil desconhecido é recusado aqui,
-            // então não há como emitir com tributação inventada pelo navegador.
-            'perfil' => ['required', Rule::in(array_keys(config('fiscal.perfis')))],
+            // nunca os códigos em si. Perfil desconhecido é recusado aqui, e
+            // perfil que só sai automático (licenciamento de SaaS) também:
+            // emitir à mão o que a cobrança já emite é nota em duplicidade.
+            'perfil' => ['required', Rule::in($this->perfisManuais())],
 
             'tomador_tipo' => ['required', Rule::in(['pf', 'pj'])],
             'tomador_documento' => ['required', 'string', new ValidCpfCnpj],
@@ -48,11 +49,24 @@ class EmitirNotaRequest extends FormRequest
         ];
     }
 
+    /**
+     * Perfis que se emitem à mão.
+     *
+     * @return array<int, string>
+     */
+    private function perfisManuais(): array
+    {
+        return collect(config('fiscal.perfis'))
+            ->filter(fn ($perfil) => $perfil['manual'] ?? true)
+            ->keys()
+            ->all();
+    }
+
     public function messages(): array
     {
         return [
             'perfil.required' => 'Escolha o tipo de serviço da nota.',
-            'perfil.in' => 'Esse tipo de serviço não existe.',
+            'perfil.in' => 'Esse tipo de serviço não pode ser emitido por aqui.',
             'valor.min' => 'O valor da nota precisa ser maior que zero.',
             'local_prestacao_ibge.required' => 'Escolha onde o atendimento foi feito (o CEP preenche o município).',
             'tomador_cidade.required' => 'A cidade do cliente é obrigatória na nota.',

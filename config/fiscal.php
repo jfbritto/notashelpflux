@@ -46,17 +46,53 @@ return [
      * em Vitória e o ISS ficou em Santa Maria de Jetibá.
      */
     'perfis' => [
+        /*
+         * Assinatura de SaaS. Sai sozinha, a cada cobrança paga, pela API.
+         * `manual => false` tira do formulário: o que é automático não deve
+         * estar à mão para alguém emitir em duplicidade sem perceber.
+         */
         'software' => [
             'rotulo' => 'Licenciamento de software',
             'item_lista_servico' => '1.05',
             'codigo_tributacao_nacional' => '010501',
             'nbs' => null,
-            // Na emissão manual quem escreve o resto é quem emite; pela API,
-            // o SaaS manda a descrição dele.
             'descricao_padrao' => 'Licenciamento de uso de software',
             'local_prestacao_padrao' => 'prestador',
             'aliquota' => 2.01,
+            'manual' => false,
         ],
+
+        /*
+         * Desenvolvimento sob medida, cobrado por projeto.
+         *
+         * PENDENTE DE CONFIRMAÇÃO COM A CONTABILIDADE, e é o único dado deste
+         * arquivo que não veio de uma nota real: 1.01 é "análise e
+         * desenvolvimento de sistemas", que é a classificação usual de quem
+         * desenvolve para cliente. Vizinhos possíveis, e que mudam o código:
+         *
+         *   1.02  programação
+         *   1.04  elaboração de programas de computador
+         *   1.06  assessoria e consultoria em informática
+         *   1.07  suporte técnico
+         *
+         * Item errado é classificação fiscal errada, e só aparece se a
+         * prefeitura questionar. Conferir antes da primeira emissão real.
+         */
+        'desenvolvimento' => [
+            'rotulo' => 'Desenvolvimento de sistemas',
+            'item_lista_servico' => '1.01',
+            'codigo_tributacao_nacional' => '010101',
+            'nbs' => null,
+            'descricao_padrao' => 'Serviços de análise e desenvolvimento de sistemas',
+            'local_prestacao_padrao' => 'prestador',
+            'aliquota' => 2.01,
+            'manual' => true,
+        ],
+
+        /*
+         * Atendimento nutricional. Códigos conferidos contra a DANFSe de
+         * 06/08/2026.
+         */
         'nutricao' => [
             'rotulo' => 'Atendimento nutricional',
             'item_lista_servico' => '4.10',
@@ -65,6 +101,7 @@ return [
             'descricao_padrao' => 'Atendimentos nutricionais',
             'local_prestacao_padrao' => 'tomador',
             'aliquota' => 2.01,
+            'manual' => true,
         ],
     ],
 ];

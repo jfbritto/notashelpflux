@@ -60,7 +60,7 @@ test.describe('emissão manual', () => {
   /**
    * Trocar o tipo troca a tributação da nota. Na tela isso precisa aparecer
    * como escolha de serviço, e trocar junto o texto e onde o serviço consta
-   * como prestado: nutrição acontece onde o cliente está, software sai do
+   * como prestado: nutrição acontece onde o cliente está, desenvolvimento sai do
    * estabelecimento da empresa.
    */
   test('o tipo de serviço muda a descrição e o local', async ({ page }) => {
@@ -73,9 +73,9 @@ test.describe('emissão manual', () => {
     await page.locator('#tomador_cep').blur();
     await expect(page.locator('#local_prestacao_nome')).toHaveValue('Vitória');
 
-    // Software: o serviço passa a constar como prestado na sede da empresa.
-    await page.getByRole('button', { name: 'Licenciamento de software' }).click();
-    await expect(page.locator('#descricao')).toHaveValue('Licenciamento de uso de software');
+    // Desenvolvimento: o serviço passa a constar como prestado na sede.
+    await page.getByRole('button', { name: 'Desenvolvimento de sistemas' }).click();
+    await expect(page.locator('#descricao')).toHaveValue('Serviços de análise e desenvolvimento de sistemas');
     await expect(page.locator('#local_prestacao_nome')).toHaveValue('Santa Maria de Jetibá');
 
     await page.getByRole('button', { name: 'Atendimento nutricional' }).click();
@@ -86,15 +86,15 @@ test.describe('emissão manual', () => {
     await page.goto('/notas/nova');
 
     await page.locator('#descricao').fill('Consultoria do projeto de agosto');
-    await page.getByRole('button', { name: 'Licenciamento de software' }).click();
+    await page.getByRole('button', { name: 'Desenvolvimento de sistemas' }).click();
 
     await expect(page.locator('#descricao')).toHaveValue('Consultoria do projeto de agosto');
   });
 
-  test('emite uma nota de software com a tributação certa', async ({ page }) => {
+  test('emite uma nota de desenvolvimento com a tributação certa', async ({ page }) => {
     await page.goto('/notas/nova');
 
-    await page.getByRole('button', { name: 'Licenciamento de software' }).click();
+    await page.getByRole('button', { name: 'Desenvolvimento de sistemas' }).click();
     await page.locator('#tomador_documento').fill('11222333000181');
     await page.locator('#tomador_nome').fill('Empresa Cliente Ltda');
     await page.locator('#tomador_cep').fill('29055450');

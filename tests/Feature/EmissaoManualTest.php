@@ -67,16 +67,47 @@ class EmissaoManualTest extends TestCase
     /**
      * A tela escolhe ENTRE os perfis do servidor, nunca os códigos em si.
      */
-    public function test_a_tela_emite_nos_dois_tipos_de_servico(): void
+    public function test_a_tela_emite_nos_tipos_manuais(): void
     {
-        $this->actingAs($this->emissora)->post(route('notas.store'), $this->formulario(['perfil' => 'software']));
-        $this->assertSame('software', Nota::first()->perfil);
-        $this->assertSame('010501', Nota::first()->perfilDeServico()['codigo_tributacao_nacional']);
+        $this->actingAs($this->emissora)->post(route('notas.store'), $this->formulario(['perfil' => 'nutricao']));
+        $this->assertSame('041001', Nota::first()->perfilDeServico()['codigo_tributacao_nacional']);
 
         Nota::query()->delete();
 
-        $this->actingAs($this->emissora)->post(route('notas.store'), $this->formulario(['perfil' => 'nutricao']));
-        $this->assertSame('041001', Nota::first()->perfilDeServico()['codigo_tributacao_nacional']);
+        $this->actingAs($this->emissora)->post(route('notas.store'), $this->formulario(['perfil' => 'desenvolvimento']));
+        $this->assertSame('desenvolvimento', Nota::first()->perfil);
+        $this->assertSame('010101', Nota::first()->perfilDeServico()['codigo_tributacao_nacional']);
+    }
+
+    /**
+     * Licenciamento de SaaS sai sozinho a cada cobrança paga. Emitir à mão o
+     * que a cobrança já emite é nota em duplicidade, então nem pela tela nem
+     * por requisição forjada.
+     */
+    public function test_o_licenciamento_automatico_nao_sai_pela_tela(): void
+    {
+        $this->actingAs($this->emissora)
+            ->get(route('notas.create'))
+            ->assertOk()
+            ->assertSee('Desenvolvimento de sistemas')
+            ->assertSee('Atendimento nutricional')
+            ->assertDontSee('Licenciamento de software');
+
+        $this->actingAs($this->emissora)
+            ->post(route('notas.store'), $this->formulario(['perfil' => 'software']))
+            ->assertSessionHasErrors('perfil');
+
+        $this->assertSame(0, Nota::count());
+    }
+
+    /**
+     * Desenvolvimento sai do estabelecimento da empresa, como o software, e
+     * não da cidade do cliente.
+     */
+    public function test_desenvolvimento_sugere_o_municipio_do_prestador(): void
+    {
+        $this->assertSame('prestador', config('fiscal.perfis.desenvolvimento.local_prestacao_padrao'));
+        $this->assertSame('tomador', config('fiscal.perfis.nutricao.local_prestacao_padrao'));
     }
 
     /**
@@ -105,13 +136,13 @@ class EmissaoManualTest extends TestCase
      */
     public function test_o_codigo_no_payload_acompanha_o_tipo_escolhido(): void
     {
-        $this->actingAs($this->emissora)->post(route('notas.store'), $this->formulario(['perfil' => 'software']));
+        $this->actingAs($this->emissora)->post(route('notas.store'), $this->formulario(['perfil' => 'desenvolvimento']));
 
         $servico = (new \App\Services\Emissor\PayloadDaNota)->montar(Nota::first())['servico'];
 
-        $this->assertSame('010501', $servico['codigo']);
-        $this->assertSame('1.05', $servico['itemListaServico']);
-        $this->assertArrayNotHasKey('nbs', $servico); // software não tem NBS
+        $this->assertSame('010101', $servico['codigo']);
+        $this->assertSame('1.01', $servico['itemListaServico']);
+        $this->assertArrayNotHasKey('nbs', $servico); // desenvolvimento não tem NBS
     }
 
     /**

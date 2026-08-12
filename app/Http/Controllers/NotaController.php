@@ -37,9 +37,14 @@ class NotaController extends Controller
             $modelo = Nota::where('origem', 'manual')->find($id);
         }
 
+        // Só os perfis que se emitem à mão. O licenciamento de SaaS sai
+        // sozinho a cada cobrança; deixá-lo aqui convidaria a emitir de novo,
+        // na mão, uma nota que já saiu.
+        $perfis = collect(config('fiscal.perfis'))->filter(fn ($p) => $p['manual'] ?? true);
+
         return view('notas.create', [
             'modelo' => $modelo,
-            'perfis' => config('fiscal.perfis'),
+            'perfis' => $perfis,
             'prestador' => config('fiscal.prestador'),
         ]);
     }
