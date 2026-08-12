@@ -3,13 +3,13 @@
 use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', function () {
-    return view('welcome');
-});
+// A plataforma tem um trabalho só: emitir nota. Não há página de apresentação
+// nem painel; quem entra vai direto para onde trabalha.
+Route::get('/', fn () => redirect()->route(auth()->check() ? 'notas.index' : 'login'));
 
-Route::get('/dashboard', function () {
-    return view('dashboard');
-})->middleware(['auth', 'verified'])->name('dashboard');
+Route::get('/dashboard', fn () => redirect()->route('notas.index'))
+    ->middleware(['auth'])
+    ->name('dashboard');
 
 // Retorno da Notaas. Fora do CSRF porque é chamada de servidor para servidor,
 // e protegido pela assinatura HMAC conferida no controller.
