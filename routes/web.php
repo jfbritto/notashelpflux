@@ -28,6 +28,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/notas/nova', [\App\Http\Controllers\NotaController::class, 'create'])->name('notas.create');
     Route::post('/notas', [\App\Http\Controllers\NotaController::class, 'store'])->name('notas.store');
     Route::post('/notas/{nota}/cancelar', [\App\Http\Controllers\NotaController::class, 'cancelar'])->name('notas.cancelar');
+    Route::post('/notas/{nota}/verificar', [\App\Http\Controllers\NotaController::class, 'verificar'])->name('notas.verificar');
 
     // Conveniência do formulário. Autenticadas para não virarem proxy aberto
     // de consulta a serviço de terceiro em nome do nosso IP.
