@@ -35,7 +35,11 @@ class PayloadDaNota
             'servico' => array_filter([
                 'codigo' => $perfil['codigo_tributacao_nacional'],
                 'itemListaServico' => $perfil['item_lista_servico'],
-                'nbs' => $perfil['nbs'],
+                // A DANFSe imprime o NBS pontuado ("1.2301.99.00"); a API exige
+                // os 9 dígitos crus ("123019900") e recusa o pontuado. Aceita-se
+                // no config a forma legível, que é a conferível contra a nota, e
+                // despe-se aqui, como já se faz com CPF e CEP.
+                'nbs' => isset($perfil['nbs']) ? preg_replace('/\D/', '', $perfil['nbs']) : null,
                 'descricao' => $nota->descricao,
                 'codigoMunicipio' => $nota->local_prestacao_ibge,
             ], fn ($v) => $v !== null),

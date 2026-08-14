@@ -66,7 +66,12 @@ class PayloadDaNotaTest extends TestCase
 
         $this->assertSame('041001', $servico['codigo']);
         $this->assertSame('4.10', $servico['itemListaServico']);
-        $this->assertSame('1.2301.99.00', $servico['nbs']);
+        // A DANFSe imprime "1.2301.99.00"; a API exige os 9 dígitos crus e
+        // recusou a forma pontuada na primeira emissão real (14/08/2026). O
+        // config guarda a forma legível, conferível contra a nota; o payload
+        // despe. Se alguém "arrumar" a normalização, este teste acusa.
+        $this->assertSame('123019900', $servico['nbs']);
+        $this->assertMatchesRegularExpression('/^\d{9}$/', $servico['nbs']);
     }
 
     /** Software não tem NBS: o campo não pode ir nulo no corpo. */
