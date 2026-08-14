@@ -172,9 +172,10 @@ A senha aparece uma vez só, na saída do comando.
    único jeito de saber que o perfil está certo, porque nota errada só aparece
    depois de emitida. Ela fecha em até 5 minutos, pela reconciliação.
 
-3. **Não emitir Desenvolvimento de sistemas antes de conferir o item 1.01 com a
-   contabilidade** (ou contra uma nota real desse serviço). É o único código
-   fiscal do `config/fiscal.php` que não veio de nota real.
+3. ~~Não emitir Desenvolvimento de sistemas antes de conferir o item 1.01 com a
+   contabilidade~~ — resolvido em 14/08/2026: nota real emitida para a IJR
+   Media Holdings confirmou 010101/1.01, e o config já tem o NBS
+   (1.1502.20.00) também confirmado.
 
 4. Conferir o limite do plano da Notaas. O gratuito é de 50 notas por mês, e a
    partir daqui as origens somam.
