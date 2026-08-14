@@ -68,6 +68,37 @@ class NotaasEmissor implements Emissor
     }
 
     /**
+     * O endpoint segue a convenção do resto da API deles (POST /emitir,
+     * GET /invoices/{id}/status). A documentação não é pública, então uma
+     * recusa aqui é tratada como resposta, não como surpresa: a mensagem chega
+     * inteira a quem clicou, e o caminho garantido continua existindo, que é
+     * cancelar no painel da Notaas e deixar a consulta sincronizar.
+     */
+    public function cancelar(string $idNoEmissor, string $motivo): array
+    {
+        if (! $this->configurado()) {
+            return ['status' => 'erro', 'erro' => 'Emissor de NFS-e não configurado.'];
+        }
+
+        $resposta = $this->http()->post("/invoices/{$idNoEmissor}/cancel", ['motivo' => $motivo]);
+
+        if ($resposta->successful()) {
+            return ['status' => $this->traduzir($resposta->json('status')) ?? 'cancelada'];
+        }
+
+        Log::error('Notaas: cancelamento recusado', [
+            'invoiceId' => $idNoEmissor,
+            'status' => $resposta->status(),
+            'resposta' => $resposta->json(),
+        ]);
+
+        return [
+            'status' => 'erro',
+            'erro' => $resposta->json('message') ?? $resposta->json('error') ?? ('HTTP '.$resposta->status()),
+        ];
+    }
+
+    /**
      * Traduz o corpo da Notaas para o nosso formato. Usado pela consulta e pelo
      * webhook, que trazem os mesmos campos.
      *

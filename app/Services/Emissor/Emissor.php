@@ -29,4 +29,15 @@ interface Emissor
 
     /** @return array<string, mixed> */
     public function consultar(string $idNoEmissor): array;
+
+    /**
+     * Pede o cancelamento de uma nota já autorizada.
+     *
+     * No padrão nacional o cancelamento é um EVENTO com justificativa, sujeito
+     * a prazo do município. O retorno segue o mesmo contrato dos demais:
+     * 'cancelada' quando o emissor aceitou, 'erro' com a mensagem quando não.
+     *
+     * @return array<string, mixed>
+     */
+    public function cancelar(string $idNoEmissor, string $motivo): array;
 }

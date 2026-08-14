@@ -86,6 +86,49 @@ class ListaDeNotasTest extends TestCase
             ->assertSee('Repetindo a nota', false);
     }
 
+    /**
+     * De quem foi a geração: o tipo de serviço aparece por extenso e a origem
+     * como selo, separando o que nasceu na tela do que chegou pela API.
+     */
+    public function test_a_lista_diz_o_servico_e_a_origem_de_cada_nota(): void
+    {
+        Nota::factory()->create(['perfil' => 'nutricao', 'origem' => 'manual']);
+        Nota::factory()->create([
+            'perfil' => 'software', 'origem' => 'treinaedu', 'referencia_externa' => 'inv-1',
+        ]);
+
+        $this->actingAs(User::factory()->create(['papel' => 'admin']))
+            ->get(route('notas.index'))
+            ->assertSee('Atendimento nutricional')
+            ->assertSee('Licenciamento de software')
+            ->assertSee('Manual')
+            ->assertSee('API · TreinaEdu');
+    }
+
+    public function test_o_filtro_por_servico_separa_as_notas(): void
+    {
+        Nota::factory()->create(['perfil' => 'nutricao', 'tomador_nome' => 'Paciente da Nutricao']);
+        Nota::factory()->create(['perfil' => 'desenvolvimento', 'tomador_nome' => 'Cliente do Sistema']);
+
+        $this->actingAs(User::factory()->create())
+            ->get(route('notas.index', ['perfil' => 'nutricao']))
+            ->assertSee('Paciente da Nutricao')
+            ->assertDontSee('Cliente do Sistema');
+    }
+
+    public function test_o_filtro_por_origem_e_do_admin(): void
+    {
+        Nota::factory()->create(['origem' => 'manual', 'tomador_nome' => 'Paciente Manual']);
+        Nota::factory()->create([
+            'origem' => 'treinaedu', 'referencia_externa' => 'inv-2', 'tomador_nome' => 'Assinante Api',
+        ]);
+
+        $this->actingAs(User::factory()->create(['papel' => 'admin']))
+            ->get(route('notas.index', ['origem' => 'treinaedu']))
+            ->assertSee('Assinante Api')
+            ->assertDontSee('Paciente Manual');
+    }
+
     /** Repetir só vale para nota manual: as dos SaaS vêm da cobrança deles. */
     public function test_nota_de_saas_nao_e_repetivel(): void
     {

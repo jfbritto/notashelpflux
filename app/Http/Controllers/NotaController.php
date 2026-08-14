@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\EmitirNotaRequest;
 use App\Models\Nota;
+use App\Services\CancelarNota;
 use App\Services\EmitirNota;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -16,12 +17,45 @@ class NotaController extends Controller
      */
     public function index(Request $request): View
     {
+        $perfis = config('fiscal.perfis');
+
         $notas = Nota::query()
             ->when(! $request->user()->ehAdmin(), fn ($q) => $q->where('origem', 'manual'))
+            // Filtros de valor fechado: chave de perfil que não existe no
+            // config e origem fora da lista são simplesmente ignoradas.
+            ->when(
+                $request->filled('perfil') && isset($perfis[$request->query('perfil')]),
+                fn ($q) => $q->where('perfil', $request->query('perfil')),
+            )
+            ->when(
+                in_array($request->query('origem'), ['manual', 'treinaedu', 'helpdiet'], true),
+                fn ($q) => $q->where('origem', $request->query('origem')),
+            )
             ->latest('id')
-            ->paginate(20);
+            ->paginate(20)
+            ->withQueryString();
 
-        return view('notas.index', compact('notas'));
+        return view('notas.index', ['notas' => $notas, 'perfis' => $perfis]);
+    }
+
+    /**
+     * Cancela uma nota autorizada. A justificativa é exigência do padrão
+     * nacional, e o mínimo evita "teste" virar motivo em documento fiscal.
+     */
+    public function cancelar(Request $request, Nota $nota, CancelarNota $cancelarNota)
+    {
+        // O mesmo recorte da lista: quem não é admin só alcança nota manual.
+        abort_unless($request->user()->ehAdmin() || $nota->origem === 'manual', 403);
+
+        $dados = $request->validate(
+            ['motivo' => ['required', 'string', 'min:15', 'max:500']],
+            ['motivo.min' => 'Explique o motivo do cancelamento (mínimo 15 caracteres): ele sai no evento fiscal.'],
+        );
+
+        $resultado = $cancelarNota->cancelar($nota, $dados['motivo']);
+
+        return redirect()->route('notas.index')
+            ->with($resultado['ok'] ? 'sucesso' : 'erro', $resultado['mensagem']);
     }
 
     /**

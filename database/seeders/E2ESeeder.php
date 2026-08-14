@@ -45,5 +45,18 @@ class E2ESeeder extends Seeder
                 'email_verified_at' => now(),
             ],
         );
+
+        // Uma nota já autorizada, para o E2E exercitar o cancelamento sem
+        // depender de emitir e fechar dentro do teste.
+        \App\Models\Nota::updateOrCreate(
+            ['notaas_invoice_id' => 'fake-semente-emitida'],
+            array_merge(\App\Models\Nota::factory()->emitida()->raw(), [
+                'origem' => 'manual',
+                'referencia_externa' => null,
+                'tomador_nome' => 'Cliente Semente Ltda',
+                'motivo_cancelamento' => null,
+                'status' => 'emitida',
+            ]),
+        );
     }
 }

@@ -16,6 +16,9 @@ class EmissorFalso implements Emissor
     /** @var array<string, mixed>|null */
     private static ?array $respostaDaConsulta = null;
 
+    /** @var array<string, mixed>|null */
+    private static ?array $respostaDoCancelamento = null;
+
     private static bool $envioProibido = false;
 
     /**
@@ -40,9 +43,16 @@ class EmissorFalso implements Emissor
         static::$envioProibido = true;
     }
 
+    /** @param  array<string, mixed>  $retorno */
+    public static function responderCancelamentoCom(array $retorno): void
+    {
+        static::$respostaDoCancelamento = $retorno;
+    }
+
     public static function esquecer(): void
     {
         static::$respostaDaConsulta = null;
+        static::$respostaDoCancelamento = null;
         static::$envioProibido = false;
     }
 
@@ -62,5 +72,10 @@ class EmissorFalso implements Emissor
     public function consultar(string $idNoEmissor): array
     {
         return static::$respostaDaConsulta ?? ['status' => 'processando'];
+    }
+
+    public function cancelar(string $idNoEmissor, string $motivo): array
+    {
+        return static::$respostaDoCancelamento ?? ['status' => 'cancelada'];
     }
 }

@@ -8,13 +8,58 @@
         </div>
     </x-slot>
 
-    <div class="py-8">
+    @php
+        // Como cada origem aparece na tela. "Manual" é quem emitiu aqui;
+        // as demais chegaram pela API do SaaS correspondente.
+        $origens = [
+            'manual' => ['Manual', 'bg-gray-100 text-gray-600 border-gray-200'],
+            'treinaedu' => ['API · TreinaEdu', 'bg-indigo-50 text-indigo-700 border-indigo-200'],
+            'helpdiet' => ['API · HelpDiet', 'bg-sky-50 text-sky-700 border-sky-200'],
+        ];
+        $ehAdmin = auth()->user()->ehAdmin();
+    @endphp
+
+    <div class="py-8" x-data="{ cancelando: null, clienteDaNota: '' }">
         <div class="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
             @if(session('sucesso'))
                 <p class="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
                     {{ session('sucesso') }}
                 </p>
             @endif
+            @if(session('erro'))
+                <p class="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+                    {{ session('erro') }}
+                </p>
+            @endif
+            @error('motivo')
+                <p class="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{{ $message }}</p>
+            @enderror
+
+            {{-- Filtros de leitura: separar por tipo de serviço e, para o
+                 admin, por onde a nota nasceu. Selects enviam sozinhos. --}}
+            <form method="GET" action="{{ route('notas.index') }}" class="mb-4 flex flex-wrap items-center gap-3">
+                <select name="perfil" onchange="this.form.submit()"
+                        class="rounded-lg border-gray-300 text-sm focus:border-emerald-500 focus:ring-emerald-500">
+                    <option value="">Todos os serviços</option>
+                    @foreach($perfis as $chave => $dados)
+                        <option value="{{ $chave }}" @selected(request('perfil') === $chave)>{{ $dados['rotulo'] }}</option>
+                    @endforeach
+                </select>
+
+                @if($ehAdmin)
+                    <select name="origem" onchange="this.form.submit()"
+                            class="rounded-lg border-gray-300 text-sm focus:border-emerald-500 focus:ring-emerald-500">
+                        <option value="">Todas as origens</option>
+                        @foreach($origens as $chave => [$rotuloOrigem])
+                            <option value="{{ $chave }}" @selected(request('origem') === $chave)>{{ $rotuloOrigem }}</option>
+                        @endforeach
+                    </select>
+                @endif
+
+                @if(request()->hasAny(['perfil', 'origem']))
+                    <a href="{{ route('notas.index') }}" class="text-xs text-gray-500 hover:text-gray-700">Limpar filtros</a>
+                @endif
+            </form>
 
             <div class="overflow-hidden rounded-xl bg-white shadow-sm">
                 <div class="overflow-x-auto">
@@ -23,6 +68,7 @@
                             <tr>
                                 <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Data</th>
                                 <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Cliente</th>
+                                <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Serviço</th>
                                 <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Valor</th>
                                 <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Situação</th>
                                 <th class="px-6 py-3 text-right text-xs font-semibold uppercase tracking-wider text-gray-500">Documentos</th>
@@ -36,6 +82,11 @@
                                     <td class="px-6 py-4">
                                         <p class="font-medium text-gray-800">{{ $nota->tomador_nome }}</p>
                                         <p class="text-xs text-gray-400">{{ $nota->local_prestacao_nome }}</p>
+                                    </td>
+                                    <td class="px-6 py-4">
+                                        <p class="text-xs font-medium text-gray-700">{{ $perfis[$nota->perfil]['rotulo'] ?? ucfirst($nota->perfil) }}</p>
+                                        @php [$rotuloOrigem, $corOrigem] = $origens[$nota->origem] ?? [ucfirst($nota->origem), 'bg-gray-100 text-gray-600 border-gray-200']; @endphp
+                                        <span class="mt-1 inline-flex rounded-full border px-2 py-0.5 text-[11px] font-medium {{ $corOrigem }}">{{ $rotuloOrigem }}</span>
                                     </td>
                                     <td class="px-6 py-4 font-semibold text-gray-800">R$ {{ number_format($nota->valor, 2, ',', '.') }}</td>
                                     <td class="px-6 py-4">
@@ -53,6 +104,8 @@
                                         <span class="inline-flex rounded-full border px-2 py-0.5 text-xs font-medium {{ $cor }}">{{ $rotulo }}</span>
                                         @if($nota->status === 'erro')
                                             <p class="mt-1 max-w-xs text-xs text-gray-500">{{ $nota->erro }}</p>
+                                        @elseif($nota->status === 'cancelada' && $nota->motivo_cancelamento)
+                                            <p class="mt-1 max-w-xs text-xs text-gray-400">{{ $nota->motivo_cancelamento }}</p>
                                         @endif
                                     </td>
                                     <td class="px-6 py-4">
@@ -69,17 +122,28 @@
                                         </div>
                                     </td>
                                     <td class="px-6 py-4 text-right">
-                                        @if($nota->origem === 'manual')
-                                            <a href="{{ route('notas.create', ['repetir' => $nota->id]) }}"
-                                               class="text-xs font-medium text-gray-500 hover:text-emerald-700">Repetir</a>
-                                        @endif
+                                        <div class="flex items-center justify-end gap-3">
+                                            @if($nota->origem === 'manual')
+                                                <a href="{{ route('notas.create', ['repetir' => $nota->id]) }}"
+                                                   class="text-xs font-medium text-gray-500 hover:text-emerald-700">Repetir</a>
+                                            @endif
+                                            @if($nota->status === 'emitida' && ($ehAdmin || $nota->origem === 'manual'))
+                                                <button type="button"
+                                                        @click="cancelando = {{ $nota->id }}; clienteDaNota = @js($nota->tomador_nome)"
+                                                        class="text-xs font-medium text-red-400 hover:text-red-600">Cancelar</button>
+                                            @endif
+                                        </div>
                                     </td>
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="6" class="px-6 py-12 text-center">
-                                        <p class="text-sm font-medium text-gray-500">Nenhuma nota ainda.</p>
-                                        <p class="mt-1 text-xs text-gray-400">Emita a primeira pelo botão acima.</p>
+                                    <td colspan="7" class="px-6 py-12 text-center">
+                                        <p class="text-sm font-medium text-gray-500">
+                                            {{ request()->hasAny(['perfil', 'origem']) ? 'Nenhuma nota com esses filtros.' : 'Nenhuma nota ainda.' }}
+                                        </p>
+                                        @unless(request()->hasAny(['perfil', 'origem']))
+                                            <p class="mt-1 text-xs text-gray-400">Emita a primeira pelo botão acima.</p>
+                                        @endunless
                                     </td>
                                 </tr>
                             @endforelse
@@ -90,6 +154,35 @@
                 @if($notas->hasPages())
                     <div class="border-t border-gray-100 px-6 py-4">{{ $notas->links() }}</div>
                 @endif
+            </div>
+        </div>
+
+        {{-- Cancelamento: pede a justificativa, porque no padrão nacional o
+             cancelamento é um evento fiscal com motivo, e sai no documento. --}}
+        <div x-show="cancelando !== null" x-cloak
+             class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+             @keydown.escape.window="cancelando = null">
+            <div class="w-full max-w-md rounded-xl bg-white p-6 shadow-xl" @click.outside="cancelando = null">
+                <h3 class="text-sm font-bold text-gray-800">Cancelar a nota de <span x-text="clienteDaNota"></span></h3>
+                <p class="mt-1 text-xs text-gray-500">
+                    O cancelamento é um evento fiscal registrado na prefeitura, com prazo do município.
+                    Explique o motivo: ele fica no documento.
+                </p>
+
+                <form method="POST" :action="`{{ url('/notas') }}/${cancelando}/cancelar`" class="mt-4">
+                    @csrf
+                    <label for="motivo" class="mb-1.5 block text-xs font-medium text-gray-700">Motivo do cancelamento</label>
+                    <textarea id="motivo" name="motivo" rows="3" required minlength="15"
+                              placeholder="Ex.: valor lançado errado, nota emitida em duplicidade"
+                              class="w-full rounded-lg border-gray-300 text-sm focus:border-red-400 focus:ring-red-400"></textarea>
+
+                    <div class="mt-4 flex items-center justify-end gap-3">
+                        <button type="button" @click="cancelando = null" class="text-sm text-gray-500 hover:text-gray-700">Voltar</button>
+                        <button type="submit" class="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-700">
+                            Cancelar a nota
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
