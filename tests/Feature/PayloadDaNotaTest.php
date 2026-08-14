@@ -29,8 +29,14 @@ class PayloadDaNotaTest extends TestCase
     /**
      * "tomador.endereco.cidade e tomador.endereco.uf são obrigatórios quando
      * endereço é informado." O código IBGE sozinho não basta.
+     *
+     * `codigoMunicipio` NÃO EXISTE em `tomador.endereco` no contrato deles
+     * (conferido em https://docs.notaas.com.br/endpoints, 14/08/2026): a
+     * Notaas resolve o IBGE do tomador sozinha, a partir de cidade + uf. Era
+     * campo morto na primeira versão; este teste agora garante que ele NÃO É
+     * mandado, em vez de continuar mandando algo que nunca foi lido.
      */
-    public function test_o_endereco_do_tomador_leva_cidade_e_uf_junto_do_ibge(): void
+    public function test_o_endereco_do_tomador_leva_cidade_e_uf_e_nao_manda_campo_inexistente(): void
     {
         $nota = Nota::factory()->create([
             'tomador_cidade' => 'Vitória', 'tomador_uf' => 'ES', 'tomador_ibge' => '3205309',
@@ -40,15 +46,19 @@ class PayloadDaNotaTest extends TestCase
 
         $this->assertSame('Vitória', $endereco['cidade']);
         $this->assertSame('ES', $endereco['uf']);
-        $this->assertSame('3205309', $endereco['codigoMunicipio']);
+        $this->assertArrayNotHasKey('codigoMunicipio', $endereco);
     }
 
     /**
      * O motivo de o local da prestação ser campo da nota: atendimento em
      * Vitória, ISS devido em Santa Maria de Jetibá. O que vai no serviço é o
-     * município do ATENDIMENTO.
+     * município do ATENDIMENTO, no campo `localPrestacao` (não
+     * `codigoMunicipio`, que não existe no contrato — foi o nome errado que
+     * saiu na nota real de 14/08/2026 com o local do PRESTADOR em vez do
+     * escolhido na tela, porque a Notaas ignorou a chave desconhecida e
+     * aplicou o padrão do projeto).
      */
-    public function test_o_local_da_prestacao_vai_no_servico_e_pode_diferir_do_prestador(): void
+    public function test_o_local_da_prestacao_vai_no_campo_certo_e_pode_diferir_do_prestador(): void
     {
         $nota = Nota::factory()->create([
             'perfil' => 'nutricao', 'local_prestacao_ibge' => '3205309',
@@ -56,8 +66,9 @@ class PayloadDaNotaTest extends TestCase
 
         $payload = (new PayloadDaNota)->montar($nota);
 
-        $this->assertSame('3205309', $payload['servico']['codigoMunicipio']);
-        $this->assertNotSame(config('fiscal.prestador.codigo_municipio'), $payload['servico']['codigoMunicipio']);
+        $this->assertSame('3205309', $payload['servico']['localPrestacao']);
+        $this->assertArrayNotHasKey('codigoMunicipio', $payload['servico']);
+        $this->assertNotSame(config('fiscal.prestador.codigo_municipio'), $payload['servico']['localPrestacao']);
     }
 
     public function test_a_nota_de_nutricao_leva_os_codigos_do_perfil(): void
@@ -65,7 +76,10 @@ class PayloadDaNotaTest extends TestCase
         $servico = (new PayloadDaNota)->montar(Nota::factory()->create(['perfil' => 'nutricao']))['servico'];
 
         $this->assertSame('041001', $servico['codigo']);
-        $this->assertSame('4.10', $servico['itemListaServico']);
+        // NÃO existe campo para o item da LC 116 (tipo "4.10") no contrato
+        // deles: só o cTribNac (`codigo`, 6 dígitos). Mandar
+        // `itemListaServico` era chave morta desde o primeiro dia.
+        $this->assertArrayNotHasKey('itemListaServico', $servico);
         // A DANFSe imprime "1.2301.99.00"; a API exige os 9 dígitos crus e
         // recusou a forma pontuada na primeira emissão real (14/08/2026). O
         // config guarda a forma legível, conferível contra a nota; o payload

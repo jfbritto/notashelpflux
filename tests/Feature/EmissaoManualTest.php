@@ -141,7 +141,9 @@ class EmissaoManualTest extends TestCase
         $servico = (new \App\Services\Emissor\PayloadDaNota)->montar(Nota::first())['servico'];
 
         $this->assertSame('010101', $servico['codigo']);
-        $this->assertSame('1.01', $servico['itemListaServico']);
+        // Não existe campo para o item da LC 116 (tipo "1.01") no contrato da
+        // Notaas: só o cTribNac de 6 dígitos acima. Ver PayloadDaNotaTest.
+        $this->assertArrayNotHasKey('itemListaServico', $servico);
         $this->assertArrayNotHasKey('nbs', $servico); // desenvolvimento não tem NBS
     }
 

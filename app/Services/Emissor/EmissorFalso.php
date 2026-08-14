@@ -74,8 +74,14 @@ class EmissorFalso implements Emissor
         return static::$respostaDaConsulta ?? ['status' => 'processando'];
     }
 
+    /**
+     * O padrão é 'processando', não 'cancelada': na Notaas real o POST
+     * /cancelar é assíncrono e responde 202. Um fake que fechasse na hora
+     * esconderia o caminho comum (reconciliação confirmando depois) atrás do
+     * caminho raro (fechamento imediato).
+     */
     public function cancelar(string $idNoEmissor, string $motivo): array
     {
-        return static::$respostaDoCancelamento ?? ['status' => 'cancelada'];
+        return static::$respostaDoCancelamento ?? ['status' => 'processando'];
     }
 }

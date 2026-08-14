@@ -68,11 +68,11 @@ class NotaasEmissor implements Emissor
     }
 
     /**
-     * O endpoint segue a convenção do resto da API deles (POST /emitir,
-     * GET /invoices/{id}/status). A documentação não é pública, então uma
-     * recusa aqui é tratada como resposta, não como surpresa: a mensagem chega
-     * inteira a quem clicou, e o caminho garantido continua existindo, que é
-     * cancelar no painel da Notaas e deixar a consulta sincronizar.
+     * POST /cancelar (SEM o id na URL — é o `invoiceId` no corpo que diz qual
+     * nota). Assíncrono: 202 aqui não é "cancelada" ainda, é "cancelamento
+     * solicitado". O desfecho vem por `nfse.cancelled` no webhook, ou por
+     * aqui, pela consulta (mesmo caminho do resto do sistema na fase 1, sem
+     * webhook). Conferido contra https://docs.notaas.com.br/endpoints.
      */
     public function cancelar(string $idNoEmissor, string $motivo): array
     {
@@ -80,10 +80,16 @@ class NotaasEmissor implements Emissor
             return ['status' => 'erro', 'erro' => 'Emissor de NFS-e não configurado.'];
         }
 
-        $resposta = $this->http()->post("/invoices/{$idNoEmissor}/cancel", ['motivo' => $motivo]);
+        $resposta = $this->http()->post('/cancelar', array_filter([
+            'invoiceId' => $idNoEmissor,
+            'motivo' => $motivo,
+        ]));
 
         if ($resposta->successful()) {
-            return ['status' => $this->traduzir($resposta->json('status')) ?? 'cancelada'];
+            // 202 = pedido aceito, ainda não é o desfecho. Só reporta
+            // 'cancelada' se o corpo já vier com o status fechado; senão
+            // segue 'processando' e quem chamou consulta depois.
+            return ['status' => $this->traduzir($resposta->json('status')) ?? 'processando'];
         }
 
         Log::error('Notaas: cancelamento recusado', [

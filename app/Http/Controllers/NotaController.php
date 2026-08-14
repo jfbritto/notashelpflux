@@ -48,7 +48,9 @@ class NotaController extends Controller
         abort_unless($request->user()->ehAdmin() || $nota->origem === 'manual', 403);
 
         $dados = $request->validate(
-            ['motivo' => ['required', 'string', 'min:15', 'max:500']],
+            // max:255 é o teto do emissor (campo `motivo` do POST /cancelar);
+            // passar disso a Notaas recusaria o pedido.
+            ['motivo' => ['required', 'string', 'min:15', 'max:255']],
             ['motivo.min' => 'Explique o motivo do cancelamento (mínimo 15 caracteres): ele sai no evento fiscal.'],
         );
 

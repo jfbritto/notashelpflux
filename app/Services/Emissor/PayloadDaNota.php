@@ -15,9 +15,19 @@ use App\Models\Nota;
  *      a Notaas recusar com E0120.
  *   2. `tomador.endereco` exige `cidade` e `uf` junto do código IBGE. Só o
  *      código não passa: a API recusa antes de chegar na prefeitura.
- *   3. O que vai em `servico.codigoMunicipio` é o LOCAL DA PRESTAÇÃO, não o
- *      município do prestador. Numa nota real de nutrição o atendimento foi em
- *      Vitória e o ISS ficou em Santa Maria de Jetibá.
+ *   3. O que vai em `servico.localPrestacao` é o LOCAL DA PRESTAÇÃO, não o
+ *      município do prestador (a Notaas resolve o município de incidência do
+ *      ISS sozinha, pela LC 116, a partir deste campo — não é preciso, e não
+ *      adiantaria, mandar os dois). Numa nota real de nutrição o atendimento
+ *      foi em Vitória e o ISS ficou em Santa Maria de Jetibá.
+ *
+ *      A primeira versão deste payload usava o nome errado
+ *      (`codigoMunicipio`), que a Notaas ignora silenciosamente e substitui
+ *      pelo padrão do projeto (o prestador): a nota de 14/08/2026 saiu com o
+ *      local do prestador em vez do escolhido na tela, sem nenhum erro. Nome
+ *      de campo errado que a API aceita sem reclamar é o pior tipo de defeito
+ *      de payload, porque não avisa. Conferido contra
+ *      https://docs.notaas.com.br/endpoints.
  */
 class PayloadDaNota
 {
@@ -34,14 +44,14 @@ class PayloadDaNota
             'tomador' => $this->tomador($nota),
             'servico' => array_filter([
                 'codigo' => $perfil['codigo_tributacao_nacional'],
-                'itemListaServico' => $perfil['item_lista_servico'],
-                // A DANFSe imprime o NBS pontuado ("1.2301.99.00"); a API exige
-                // os 9 dígitos crus ("123019900") e recusa o pontuado. Aceita-se
-                // no config a forma legível, que é a conferível contra a nota, e
-                // despe-se aqui, como já se faz com CPF e CEP.
+                // NÃO EXISTE campo para o item da LC 116 (tipo "4.10") no
+                // contrato deles: o único código de tributação é este
+                // ('codigo', o cTribNac de 6 dígitos). `item_lista_servico`
+                // segue no config só como metadado para humano — nunca foi e
+                // não deve ser mandado no payload.
                 'nbs' => isset($perfil['nbs']) ? preg_replace('/\D/', '', $perfil['nbs']) : null,
                 'descricao' => $nota->descricao,
-                'codigoMunicipio' => $nota->local_prestacao_ibge,
+                'localPrestacao' => $nota->local_prestacao_ibge,
             ], fn ($v) => $v !== null),
             'valores' => [
                 'total' => (float) $nota->valor,
@@ -66,9 +76,11 @@ class PayloadDaNota
                 'complemento' => $nota->tomador_complemento,
                 'bairro' => $nota->tomador_bairro,
                 // Cidade e UF junto do código: a API recusa o endereço sem eles.
+                // NÃO existe `codigoMunicipio` em tomador.endereco — a Notaas
+                // resolve o IBGE do tomador sozinha a partir de cidade + uf,
+                // então $nota->tomador_ibge nunca precisou ir no payload.
                 'cidade' => $nota->tomador_cidade,
                 'uf' => $nota->tomador_uf,
-                'codigoMunicipio' => $nota->tomador_ibge,
                 'cep' => $nota->tomador_cep,
             ], fn ($v) => filled($v)),
         ], fn ($v) => filled($v));

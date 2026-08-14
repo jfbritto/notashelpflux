@@ -102,6 +102,12 @@
                                             };
                                         @endphp
                                         <span class="inline-flex rounded-full border px-2 py-0.5 text-xs font-medium {{ $cor }}">{{ $rotulo }}</span>
+                                        {{-- Cancelamento pedido é ASSÍNCRONO: a nota continua "Emitida" (o
+                                             documento ainda vale) até o emissor confirmar. Sem este aviso,
+                                             clicar em Cancelar pareceria não ter feito nada. --}}
+                                        @if($nota->status === 'emitida' && $nota->cancelamento_solicitado_em)
+                                            <span class="mt-1 block text-xs font-medium text-amber-600">Cancelamento pedido, aguardando confirmação</span>
+                                        @endif
                                         @if($nota->status === 'erro')
                                             <p class="mt-1 max-w-xs text-xs text-gray-500">{{ $nota->erro }}</p>
                                         @elseif($nota->status === 'cancelada' && $nota->motivo_cancelamento)
@@ -127,7 +133,7 @@
                                                 <a href="{{ route('notas.create', ['repetir' => $nota->id]) }}"
                                                    class="text-xs font-medium text-gray-500 hover:text-emerald-700">Repetir</a>
                                             @endif
-                                            @if($nota->status === 'emitida' && ($ehAdmin || $nota->origem === 'manual'))
+                                            @if($nota->status === 'emitida' && ! $nota->cancelamento_solicitado_em && ($ehAdmin || $nota->origem === 'manual'))
                                                 <button type="button"
                                                         @click="cancelando = {{ $nota->id }}; clienteDaNota = @js($nota->tomador_nome)"
                                                         class="text-xs font-medium text-red-400 hover:text-red-600">Cancelar</button>
@@ -172,7 +178,7 @@
                 <form method="POST" :action="`{{ url('/notas') }}/${cancelando}/cancelar`" class="mt-4">
                     @csrf
                     <label for="motivo" class="mb-1.5 block text-xs font-medium text-gray-700">Motivo do cancelamento</label>
-                    <textarea id="motivo" name="motivo" rows="3" required minlength="15"
+                    <textarea id="motivo" name="motivo" rows="3" required minlength="15" maxlength="255"
                               placeholder="Ex.: valor lançado errado, nota emitida em duplicidade"
                               class="w-full rounded-lg border-gray-300 text-sm focus:border-red-400 focus:ring-red-400"></textarea>
 
