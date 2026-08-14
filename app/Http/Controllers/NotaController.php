@@ -6,6 +6,7 @@ use App\Http\Requests\EmitirNotaRequest;
 use App\Models\Nota;
 use App\Services\CancelarNota;
 use App\Services\EmitirNota;
+use App\Services\VerificarNota;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
@@ -56,6 +57,20 @@ class NotaController extends Controller
         );
 
         $resultado = $cancelarNota->cancelar($nota, $dados['motivo']);
+
+        return redirect()->route('notas.index')
+            ->with($resultado['ok'] ? 'sucesso' : 'erro', $resultado['mensagem']);
+    }
+
+    /**
+     * Consulta a nota na hora, para quem não quer esperar a reconciliação
+     * (roda a cada 5 min). Mesmo recorte de quem pode mexer na nota.
+     */
+    public function verificar(Request $request, Nota $nota, VerificarNota $verificarNota)
+    {
+        abort_unless($request->user()->ehAdmin() || $nota->origem === 'manual', 403);
+
+        $resultado = $verificarNota->verificar($nota);
 
         return redirect()->route('notas.index')
             ->with($resultado['ok'] ? 'sucesso' : 'erro', $resultado['mensagem']);

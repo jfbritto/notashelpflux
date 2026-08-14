@@ -141,6 +141,15 @@
                                                 <a href="{{ route('notas.create', ['repetir' => $nota->id]) }}"
                                                    class="text-xs font-medium text-gray-500 hover:text-emerald-700">Repetir</a>
                                             @endif
+                                            {{-- Sem isso, quem cancela ou emite fica sem saber que a
+                                                 confirmação leva minutos: a reconciliação só roda a cada
+                                                 5 min, e o cron não avisa ninguém. --}}
+                                            @if(($nota->status === 'processando' || ($nota->status === 'emitida' && $nota->cancelamento_solicitado_em)) && ($ehAdmin || $nota->origem === 'manual'))
+                                                <form method="POST" action="{{ route('notas.verificar', $nota) }}">
+                                                    @csrf
+                                                    <button type="submit" class="text-xs font-medium text-gray-500 hover:text-emerald-700">Verificar agora</button>
+                                                </form>
+                                            @endif
                                             @if($nota->status === 'emitida' && ! $nota->cancelamento_solicitado_em && ($ehAdmin || $nota->origem === 'manual'))
                                                 <button type="button"
                                                         @click="cancelando = {{ $nota->id }}; clienteDaNota = @js($nota->tomador_nome)"
