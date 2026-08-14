@@ -144,9 +144,16 @@ sudo -u deploy cat /home/deploy/.ssh/gh_actions_notas
 
 A última linha imprime a chave PRIVADA: colar direto em GitHub → notashelpflux
 → Settings → Secrets and variables → Actions (`SSH_PRIVATE_KEY`), junto de
-`SSH_HOST=129.121.50.200`, `SSH_USER=deploy` e `SSH_PORT=22`. **A chave não
-passa por chat nem por e-mail.** Enquanto os secrets não existirem, o job de
-Deploy falha e o deploy é manual: `su - deploy -c '/home/deploy/deploy-notas.sh'`.
+`SSH_HOST=129.121.50.200`, `SSH_USER=deploy` e `SSH_PORT`. **A chave não passa
+por chat nem por e-mail.** Enquanto os secrets não existirem, o job de Deploy
+falha e o deploy é manual: `su - deploy -c '/home/deploy/deploy-notas.sh'`.
+
+O sshd desta VPS **não escuta na porta 22 padrão** (o firewall libera a 22,
+mas nada está de fato ouvindo nela): confirme com `sudo ss -tlnp | grep ssh`
+ou olhando como você mesmo conecta (`ssh ... -p <porta>`) antes de assumir
+22. Nesta VPS é `22022`. Porta errada aqui não dá erro óbvio: o job falha com
+"connection refused", parecendo problema de rede, quando na verdade é só o
+valor do secret (aconteceu de verdade em 14/08/2026, o secret nasceu com 22).
 
 ## Depois do primeiro deploy
 
@@ -165,9 +172,10 @@ A senha aparece uma vez só, na saída do comando.
    único jeito de saber que o perfil está certo, porque nota errada só aparece
    depois de emitida. Ela fecha em até 5 minutos, pela reconciliação.
 
-3. **Não emitir Desenvolvimento de sistemas antes de conferir o item 1.01 com a
-   contabilidade** (ou contra uma nota real desse serviço). É o único código
-   fiscal do `config/fiscal.php` que não veio de nota real.
+3. ~~Não emitir Desenvolvimento de sistemas antes de conferir o item 1.01 com a
+   contabilidade~~ — resolvido em 14/08/2026: nota real emitida para a IJR
+   Media Holdings confirmou 010101/1.01, e o config já tem o NBS
+   (1.1502.20.00) também confirmado.
 
 4. Conferir o limite do plano da Notaas. O gratuito é de 50 notas por mês, e a
    partir daqui as origens somam.
