@@ -20,7 +20,7 @@
     @endphp
 
     <div class="py-8" x-data="{ cancelando: null, clienteDaNota: '' }">
-        <div class="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+        <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             @if(session('sucesso'))
                 <p class="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
                     {{ session('sucesso') }}
@@ -66,29 +66,37 @@
                     <table class="w-full text-sm">
                         <thead class="border-b border-gray-100 bg-gray-50">
                             <tr>
-                                <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Data</th>
+                                <th class="whitespace-nowrap px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Data</th>
                                 <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Cliente</th>
                                 <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Serviço</th>
-                                <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Valor</th>
+                                <th class="whitespace-nowrap px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Valor</th>
                                 <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Situação</th>
-                                <th class="px-6 py-3 text-right text-xs font-semibold uppercase tracking-wider text-gray-500">Documentos</th>
+                                <th class="whitespace-nowrap px-6 py-3 text-right text-xs font-semibold uppercase tracking-wider text-gray-500">Documentos</th>
                                 <th class="px-6 py-3"></th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-50">
                             @forelse($notas as $nota)
                                 <tr class="transition hover:bg-gray-50">
-                                    <td class="px-6 py-4 text-xs text-gray-500">{{ $nota->created_at->format('d/m/Y') }}</td>
+                                    <td class="whitespace-nowrap px-6 py-4 text-xs text-gray-500">{{ $nota->created_at->format('d/m/Y') }}</td>
                                     <td class="px-6 py-4">
                                         <p class="font-medium text-gray-800">{{ $nota->tomador_nome }}</p>
                                         <p class="text-xs text-gray-400">{{ $nota->local_prestacao_nome }}</p>
                                     </td>
                                     <td class="px-6 py-4">
                                         <p class="text-xs font-medium text-gray-700">{{ $perfis[$nota->perfil]['rotulo'] ?? ucfirst($nota->perfil) }}</p>
-                                        @php [$rotuloOrigem, $corOrigem] = $origens[$nota->origem] ?? [ucfirst($nota->origem), 'bg-gray-100 text-gray-600 border-gray-200']; @endphp
-                                        <span class="mt-1 inline-flex rounded-full border px-2 py-0.5 text-[11px] font-medium {{ $corOrigem }}">{{ $rotuloOrigem }}</span>
+                                        @php
+                                            [$rotuloOrigem, $corOrigem] = $origens[$nota->origem] ?? [ucfirst($nota->origem), 'bg-gray-100 text-gray-600 border-gray-200'];
+                                            // Quem emitiu: só existe pra nota manual (a de API não tem um
+                                            // usuário por trás, o próprio selo de origem já diz que foi
+                                            // automático). Primeiro nome só, pra não estourar o selo.
+                                            if ($nota->origem === 'manual' && $nota->autora) {
+                                                $rotuloOrigem .= ' · '.explode(' ', $nota->autora->name)[0];
+                                            }
+                                        @endphp
+                                        <span class="mt-1 inline-flex whitespace-nowrap rounded-full border px-2 py-0.5 text-[11px] font-medium {{ $corOrigem }}">{{ $rotuloOrigem }}</span>
                                     </td>
-                                    <td class="px-6 py-4 font-semibold text-gray-800">R$ {{ number_format($nota->valor, 2, ',', '.') }}</td>
+                                    <td class="whitespace-nowrap px-6 py-4 font-semibold text-gray-800">R$ {{ number_format($nota->valor, 2, ',', '.') }}</td>
                                     <td class="px-6 py-4">
                                         {{-- As quatro situações aparecem como são. Nota recusada não pode
                                              se passar por pendente: no TreinaEdu isso escondeu uma nota
@@ -101,20 +109,20 @@
                                                 default => ['Em emissão', 'bg-amber-50 text-amber-700 border-amber-200'],
                                             };
                                         @endphp
-                                        <span class="inline-flex rounded-full border px-2 py-0.5 text-xs font-medium {{ $cor }}">{{ $rotulo }}</span>
+                                        <span class="inline-flex whitespace-nowrap rounded-full border px-2 py-0.5 text-xs font-medium {{ $cor }}">{{ $rotulo }}</span>
                                         {{-- Cancelamento pedido é ASSÍNCRONO: a nota continua "Emitida" (o
                                              documento ainda vale) até o emissor confirmar. Sem este aviso,
                                              clicar em Cancelar pareceria não ter feito nada. --}}
                                         @if($nota->status === 'emitida' && $nota->cancelamento_solicitado_em)
-                                            <span class="mt-1 block text-xs font-medium text-amber-600">Cancelamento pedido, aguardando confirmação</span>
+                                            <span class="mt-1 block max-w-xs text-xs font-medium text-amber-600">Cancelamento pedido, aguardando confirmação</span>
                                         @endif
                                         @if($nota->status === 'erro')
-                                            <p class="mt-1 max-w-xs text-xs text-gray-500">{{ $nota->erro }}</p>
+                                            <p class="mt-1 max-w-sm text-xs text-gray-500">{{ $nota->erro }}</p>
                                         @elseif($nota->status === 'cancelada' && $nota->motivo_cancelamento)
-                                            <p class="mt-1 max-w-xs text-xs text-gray-400">{{ $nota->motivo_cancelamento }}</p>
+                                            <p class="mt-1 max-w-sm text-xs text-gray-400">{{ $nota->motivo_cancelamento }}</p>
                                         @endif
                                     </td>
-                                    <td class="px-6 py-4">
+                                    <td class="whitespace-nowrap px-6 py-4">
                                         <div class="flex items-center justify-end gap-3">
                                             @if($nota->pdf_url)
                                                 <a href="{{ $nota->pdf_url }}" target="_blank" rel="noopener" class="font-medium text-emerald-600 hover:text-emerald-700">PDF</a>
@@ -127,7 +135,7 @@
                                             @endif
                                         </div>
                                     </td>
-                                    <td class="px-6 py-4 text-right">
+                                    <td class="whitespace-nowrap px-6 py-4 text-right">
                                         <div class="flex items-center justify-end gap-3">
                                             @if($nota->origem === 'manual')
                                                 <a href="{{ route('notas.create', ['repetir' => $nota->id]) }}"

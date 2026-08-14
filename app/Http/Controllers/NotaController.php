@@ -21,6 +21,7 @@ class NotaController extends Controller
         $perfis = config('fiscal.perfis');
 
         $notas = Nota::query()
+            ->with('autora')
             ->when(! $request->user()->ehAdmin(), fn ($q) => $q->where('origem', 'manual'))
             // Filtros de valor fechado: chave de perfil que não existe no
             // config e origem fora da lista são simplesmente ignoradas.
