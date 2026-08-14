@@ -144,7 +144,8 @@ class EmissaoManualTest extends TestCase
         // Não existe campo para o item da LC 116 (tipo "1.01") no contrato da
         // Notaas: só o cTribNac de 6 dígitos acima. Ver PayloadDaNotaTest.
         $this->assertArrayNotHasKey('itemListaServico', $servico);
-        $this->assertArrayNotHasKey('nbs', $servico); // desenvolvimento não tem NBS
+        // Confirmado contra nota real da IJR Media Holdings (RPS 181, 06/07/2026).
+        $this->assertSame('115022000', $servico['nbs']);
     }
 
     /**

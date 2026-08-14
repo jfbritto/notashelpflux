@@ -27,8 +27,25 @@ class PerfilDeServicoTest extends TestCase
     {
         $perfil = config('fiscal.perfis.software');
 
+        // NBS confirmado contra a DANFSe da mensalidade do HelpDiet (RPS 189, 04/08/2026).
         $this->assertSame('010501', $perfil['codigo_tributacao_nacional']);
         $this->assertSame('1.05', $perfil['item_lista_servico']);
+        $this->assertSame('1.1103.22.00', $perfil['nbs']);
+        $this->assertSame('prestador', $perfil['local_prestacao_padrao']);
+    }
+
+    /**
+     * Este item ficou marcado como pendente de confirmação com a
+     * contabilidade até uma nota real aparecer: RPS 181 (06/07/2026), para a
+     * IJR Media Holdings LLC, cliente de desenvolvimento sob medida.
+     */
+    public function test_o_perfil_de_desenvolvimento_carrega_os_codigos_confirmados_pela_nota_real(): void
+    {
+        $perfil = config('fiscal.perfis.desenvolvimento');
+
+        $this->assertSame('010101', $perfil['codigo_tributacao_nacional']);
+        $this->assertSame('1.01', $perfil['item_lista_servico']);
+        $this->assertSame('1.1502.20.00', $perfil['nbs']);
         $this->assertSame('prestador', $perfil['local_prestacao_padrao']);
     }
 
