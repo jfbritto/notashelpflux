@@ -63,6 +63,14 @@ return [
             'path' => storage_path('logs/laravel.log'),
             'level' => env('LOG_LEVEL', 'debug'),
             'replace_placeholders' => true,
+            // Dois usuários escrevem neste arquivo: o www-data (requisições) e
+            // o deploy (cron da reconciliação, artisan). Quem chegar primeiro
+            // cria o arquivo, e sem isto ele nasceria 644, ilegível de
+            // escrever para o outro. Foi a causa de um 500 sem rastro no
+            // TreinaEdu (12/08/2026) e reapareceu invertida aqui no primeiro
+            // deploy: log criado pelo www-data que o deploy não conseguia
+            // ajustar.
+            'permission' => 0664,
         ],
 
         'daily' => [
