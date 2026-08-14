@@ -105,6 +105,38 @@ class ListaDeNotasTest extends TestCase
             ->assertSee('API · TreinaEdu');
     }
 
+    /**
+     * Quem emitiu só faz sentido pra nota manual, que tem um usuário por
+     * trás. A de API não tem: o selo de origem já diz que foi automático.
+     */
+    public function test_a_lista_diz_quem_emitiu_a_nota_manual(): void
+    {
+        $emissora = User::factory()->create(['name' => 'Brunelli Santos']);
+        Nota::factory()->create([
+            'origem' => 'manual', 'criada_por' => $emissora->id, 'tomador_nome' => 'Paciente da Brunelli',
+        ]);
+
+        $this->actingAs(User::factory()->create(['papel' => 'admin']))
+            ->get(route('notas.index'))
+            ->assertSee('Manual · Brunelli');
+    }
+
+    /** Nota manual sem autor conhecido (dado antigo) não quebra o selo. */
+    public function test_nota_manual_sem_autor_mostra_so_o_selo(): void
+    {
+        Nota::factory()->create([
+            'origem' => 'manual', 'criada_por' => null, 'tomador_nome' => 'Paciente Sem Autor',
+        ]);
+
+        $this->actingAs(User::factory()->create(['papel' => 'admin']))
+            ->get(route('notas.index'))
+            ->assertSee('Paciente Sem Autor')
+            // O filtro de origem sempre lista "API · TreinaEdu" nas opções,
+            // então o "·" sozinho aparece na página. O que não pode
+            // acontecer é o selo desta nota ficar "Manual ·" com nada depois.
+            ->assertDontSee('Manual · ');
+    }
+
     public function test_o_filtro_por_servico_separa_as_notas(): void
     {
         Nota::factory()->create(['perfil' => 'nutricao', 'tomador_nome' => 'Paciente da Nutricao']);
