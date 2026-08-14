@@ -45,4 +45,16 @@ test('a lista identifica o serviço e a origem, e o cancelamento da nota emitida
   await expect(linhaDepois.getByText('Emitida')).toBeVisible();
   await expect(linhaDepois.getByText('Cancelamento pedido, aguardando confirmação')).toBeVisible();
   await expect(linhaDepois.getByRole('button', { name: 'Cancelar' })).toHaveCount(0);
+
+  // Quem não quer esperar a reconciliação (a cada 5 min) pode consultar na
+  // hora. O emissor falso do E2E não tem como fingir a confirmação vindo de
+  // fora (é estado estático do lado do PHP, sem canal pra mexer daqui), então
+  // o único desfecho alcançável aqui é "ainda sem confirmação" — o que já
+  // basta pra provar que a rota, o CSRF e o freio contra clique repetido
+  // funcionam de ponta a ponta.
+  await linhaDepois.getByRole('button', { name: 'Verificar agora' }).click();
+  await expect(page.getByText('Ainda sem confirmação do emissor')).toBeVisible();
+
+  await linhaDepois.getByRole('button', { name: 'Verificar agora' }).click();
+  await expect(page.getByText(/Aguarde.*antes de tentar de novo/)).toBeVisible();
 });
