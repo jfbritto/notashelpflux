@@ -88,9 +88,32 @@ class PayloadDaNotaTest extends TestCase
         $this->assertMatchesRegularExpression('/^\d{9}$/', $servico['nbs']);
     }
 
-    /** Software não tem NBS: o campo não pode ir nulo no corpo. */
+    /**
+     * Confirmado contra nota real emitida para a IJR Media Holdings LLC (RPS
+     * 181, 06/07/2026, cliente de desenvolvimento sob medida): resolve a
+     * pendência que existia sobre o item 1.01.
+     */
+    public function test_a_nota_de_desenvolvimento_leva_os_codigos_do_perfil(): void
+    {
+        $servico = (new PayloadDaNota)->montar(Nota::factory()->create(['perfil' => 'desenvolvimento']))['servico'];
+
+        $this->assertSame('010101', $servico['codigo']);
+        $this->assertArrayNotHasKey('itemListaServico', $servico);
+        $this->assertSame('115022000', $servico['nbs']);
+        $this->assertMatchesRegularExpression('/^\d{9}$/', $servico['nbs']);
+    }
+
+    /**
+     * Hoje os três perfis cadastrados têm NBS (todos confirmados contra nota
+     * real). O comportamento de omitir o campo quando não há NBS continua
+     * existindo no código para o dia em que um perfil novo não tiver um
+     * mapeamento de NBS, por isso o teste força esse caso via config em vez
+     * de depender de um perfil real ficar sem NBS.
+     */
     public function test_perfil_sem_nbs_nao_manda_o_campo(): void
     {
+        config(['fiscal.perfis.software.nbs' => null]);
+
         $servico = (new PayloadDaNota)->montar(Nota::factory()->create(['perfil' => 'software']))['servico'];
 
         $this->assertArrayNotHasKey('nbs', $servico);

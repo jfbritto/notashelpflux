@@ -50,12 +50,15 @@ return [
          * Assinatura de SaaS. Sai sozinha, a cada cobrança paga, pela API.
          * `manual => false` tira do formulário: o que é automático não deve
          * estar à mão para alguém emitir em duplicidade sem perceber.
+         *
+         * Confirmado contra nota real (RPS 189, 04/08/2026, mensalidade do
+         * HelpDiet para a Natal Ponta Negra Hotel LTDA).
          */
         'software' => [
             'rotulo' => 'Licenciamento de software',
             'item_lista_servico' => '1.05',
             'codigo_tributacao_nacional' => '010501',
-            'nbs' => null,
+            'nbs' => '1.1103.22.00',
             'descricao_padrao' => 'Licenciamento de uso de software',
             'local_prestacao_padrao' => 'prestador',
             'aliquota' => 2.01,
@@ -65,24 +68,17 @@ return [
         /*
          * Desenvolvimento sob medida, cobrado por projeto.
          *
-         * PENDENTE DE CONFIRMAÇÃO COM A CONTABILIDADE, e é o único dado deste
-         * arquivo que não veio de uma nota real: 1.01 é "análise e
-         * desenvolvimento de sistemas", que é a classificação usual de quem
-         * desenvolve para cliente. Vizinhos possíveis, e que mudam o código:
-         *
-         *   1.02  programação
-         *   1.04  elaboração de programas de computador
-         *   1.06  assessoria e consultoria em informática
-         *   1.07  suporte técnico
-         *
-         * Item errado é classificação fiscal errada, e só aparece se a
-         * prefeitura questionar. Conferir antes da primeira emissão real.
+         * Confirmado contra nota real (RPS 181, 06/07/2026, para a IJR Media
+         * Holdings LLC, cliente de desenvolvimento recorrente): 1.01 é
+         * mesmo "análise e desenvolvimento de sistemas". Antes deste
+         * documento aparecer, este item estava marcado como pendente de
+         * confirmação com a contabilidade; a nota real resolve a dúvida.
          */
         'desenvolvimento' => [
             'rotulo' => 'Desenvolvimento de sistemas',
             'item_lista_servico' => '1.01',
             'codigo_tributacao_nacional' => '010101',
-            'nbs' => null,
+            'nbs' => '1.1502.20.00',
             'descricao_padrao' => 'Serviços de análise e desenvolvimento de sistemas',
             'local_prestacao_padrao' => 'prestador',
             'aliquota' => 2.01,
