@@ -87,7 +87,17 @@ jobs:
       cancel-in-progress: false
 
     steps:
+      # Os secrets de SSH podem ainda não existir (o deploy manual na VPS
+      # cobre). Sem esta checagem, TODO push ficava vermelho neste job, e
+      # vermelho crônico ensina a ignorar o CI: quando os testes quebrassem
+      # de verdade, ninguém olharia. Com os secrets cadastrados, o deploy
+      # liga sozinho, sem mexer aqui.
+      - name: Checar se o deploy está configurado
+        id: config
+        run: echo "pronto=${{ secrets.SSH_HOST != '' }}" >> "$GITHUB_OUTPUT"
+
       - name: Deploy via SSH
+        if: steps.config.outputs.pronto == 'true'
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.SSH_HOST }}
@@ -95,3 +105,7 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: ${{ secrets.SSH_PORT }}
           script: /home/deploy/deploy-notas.sh
+
+      - name: Avisar que o deploy foi pulado
+        if: steps.config.outputs.pronto != 'true'
+        run: echo "::notice::Deploy pulado, secrets de SSH nao configurados (roteiro em docs/deploy.md). Enquanto isso, o deploy e manual na VPS."
