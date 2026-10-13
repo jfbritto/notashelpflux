@@ -35,6 +35,24 @@ return [
     ],
 
     /*
+     * De onde a nota pode nascer: o valor gravado em `notas.origem`, com o
+     * rótulo que a tela mostra.
+     *
+     * A lista mora aqui, e não repetida em cada tela e filtro, porque cada
+     * SaaS novo entra em todos esses lugares de uma vez: antes dela, a origem
+     * estava escrita à mão no filtro da lista e no selo da tela, e um SaaS
+     * novo ficaria fora do filtro sem ninguém notar. `manual` é a emissão
+     * pela tela; as demais chegam pela API, cada uma com a sua aplicação
+     * (tabela `aplicacoes`).
+     */
+    'origens' => [
+        'manual' => 'Manual',
+        'treinaedu' => 'TreinaEdu',
+        'helpdiet' => 'HelpDiet',
+        'hotelemdia' => 'Hotel em Dia',
+    ],
+
+    /*
      * Perfis de serviço.
      *
      * Os códigos de nutrição foram conferidos contra uma DANFSe real de
@@ -63,6 +81,27 @@ return [
             'local_prestacao_padrao' => 'prestador',
             'aliquota' => 2.01,
             'manual' => false,
+
+            /*
+             * Reforma tributária (IBS/CBS, LC 214/2025). Valores copiados de
+             * uma NFS-e real emitida no Emissor Nacional para este mesmo
+             * serviço (cTribNac 01.05.01, NBS 1.1103.22.00): CST 000
+             * (tributação integral), cClassTrib 000001, cIndOp 100501.
+             *
+             * Só este perfil tem o grupo. Nos outros a combinação NBS +
+             * indicador + classificação não foi conferida contra nota real,
+             * e a Notaas exige que ela forme uma tupla válida do Anexo VIII
+             * (recusa com 400 quando há mais de um enquadramento e ninguém
+             * escolheu). Mandar um palpite é pior do que deixar a Notaas
+             * resolver; e o Simples Nacional está dispensado de destacar
+             * IBS/CBS em 2026. O NBS que vai no grupo é o do próprio perfil,
+             * acima: os dois não podem divergir.
+             */
+            'ibscbs' => [
+                'cst' => '000',
+                'classificacao_tributaria' => '000001',
+                'indicador_operacao' => '100501',
+            ],
         ],
 
         /*

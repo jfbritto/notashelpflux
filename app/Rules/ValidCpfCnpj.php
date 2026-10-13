@@ -22,7 +22,7 @@ class ValidCpfCnpj implements ValidationRule
             default => false,
         };
 
-        if (!$valid) {
+        if (! $valid) {
             $fail('Informe um CPF ou CNPJ válido.');
         }
     }

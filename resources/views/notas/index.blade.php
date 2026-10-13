@@ -10,12 +10,19 @@
 
     @php
         // Como cada origem aparece na tela. "Manual" é quem emitiu aqui;
-        // as demais chegaram pela API do SaaS correspondente.
-        $origens = [
-            'manual' => ['Manual', 'bg-gray-100 text-gray-600 border-gray-200'],
-            'treinaedu' => ['API · TreinaEdu', 'bg-indigo-50 text-indigo-700 border-indigo-200'],
-            'helpdiet' => ['API · HelpDiet', 'bg-sky-50 text-sky-700 border-sky-200'],
+        // as demais chegaram pela API do SaaS correspondente. A lista vem de
+        // config/fiscal.php; aqui só se escolhe a cor, e origem sem cor
+        // própria cai no cinza em vez de sumir do filtro.
+        $cores = [
+            'manual' => 'bg-gray-100 text-gray-600 border-gray-200',
+            'treinaedu' => 'bg-indigo-50 text-indigo-700 border-indigo-200',
+            'helpdiet' => 'bg-sky-50 text-sky-700 border-sky-200',
+            'hotelemdia' => 'bg-violet-50 text-violet-700 border-violet-200',
         ];
+        $origens = collect(config('fiscal.origens'))->mapWithKeys(fn ($rotulo, $chave) => [$chave => [
+            $chave === 'manual' ? $rotulo : 'API · '.$rotulo,
+            $cores[$chave] ?? 'bg-gray-100 text-gray-600 border-gray-200',
+        ]])->all();
         $ehAdmin = auth()->user()->ehAdmin();
     @endphp
 

@@ -161,6 +161,22 @@ class ListaDeNotasTest extends TestCase
             ->assertDontSee('Paciente Manual');
     }
 
+    /** O Hotel em Dia entra no selo e no filtro como os outros SaaS. */
+    public function test_a_origem_hotel_em_dia_tem_selo_e_filtro(): void
+    {
+        Nota::factory()->create(['origem' => 'manual', 'tomador_nome' => 'Paciente Manual']);
+        Nota::factory()->create([
+            'origem' => 'hotelemdia', 'perfil' => 'software', 'referencia_externa' => 'f-1', 'tomador_nome' => 'Hotel Assinante',
+        ]);
+
+        $this->actingAs(User::factory()->create(['papel' => 'admin']))
+            ->get(route('notas.index', ['origem' => 'hotelemdia']))
+            ->assertSee('Hotel Assinante')
+            ->assertSee('API · Hotel em Dia')
+            ->assertSee('<option value="hotelemdia" selected', false)
+            ->assertDontSee('Paciente Manual');
+    }
+
     /** Repetir só vale para nota manual: as dos SaaS vêm da cobrança deles. */
     public function test_nota_de_saas_nao_e_repetivel(): void
     {

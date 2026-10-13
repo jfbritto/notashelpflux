@@ -4,9 +4,10 @@ Plataforma de emissão de NFS-e da HelpFlux. Um emissor só, três origens:
 
 | origem | como emite |
 |---|---|
-| TreinaEdu | pela API, a cada cobrança paga |
+| TreinaEdu | pela API, a cada cobrança paga (depois da virada; hoje emite direto na Notaas) |
 | HelpDiet | pela API (depois; hoje não emite nota) |
-| Nutrição | pela interface, avulsa |
+| Hotel em Dia | pela API, a cada cobrança paga (o primeiro SaaS ligado) |
+| Nutrição e desenvolvimento | pela interface, avulsa |
 
 Todas saem do mesmo CNPJ, o da HELPFLUX SOLUCOES EM TECNOLOGIA LTDA. Não são
 três emitentes: são três origens do mesmo emitente. A plataforma existe para não
@@ -18,7 +19,33 @@ A1 não entra aqui.
 
 ## Estado
 
-Em desenho. Nada implementado ainda.
+No ar em notas.helpflux.com.br desde agosto/2026.
+
+- **Emissão pela tela** (nutrição e desenvolvimento), lista com filtros,
+  repetir nota, cancelamento com motivo e "Verificar agora".
+- **Fechamento da nota** pelo webhook da Notaas (`/webhooks/notaas`) e pela
+  reconciliação (`notas:reconciliar`, a cada 5 min).
+- **API para os SaaS** (`POST /api/notas`, `GET /api/notas/{referencia}`,
+  `GET /api/notas`), autenticada por `x-api-key`, com idempotência por
+  (origem, referência). Origem e perfil vêm do cadastro da aplicação, nunca
+  do corpo. Aplicações são criadas e revogadas por comando:
+
+  ```bash
+  php artisan aplicacoes:criar "Hotel em Dia" hotelemdia software https://<saas>/webhooks/notas
+  php artisan aplicacoes:revogar <id>
+  ```
+
+  A chave e o segredo do retorno aparecem uma vez só, na criação.
+- **Retorno assinado** aos SaaS: `POST` na `callback_url` com
+  `X-Notas-Event` (`nota.emitida`, `nota.erro`, `nota.cancelada`,
+  `nota.documentos`) e `X-Notas-Signature: sha256=<HMAC-SHA256 do corpo>`.
+  Três tentativas com espera crescente **só com fila de verdade**
+  (`QUEUE_CONNECTION=database`; o agendador roda o `queue:work`). Com
+  `sync`, o envio é uma tentativa só, na hora.
+- **IBS/CBS** no perfil `software` (`valores.ibscbs`), com os valores de uma
+  NFS-e real do Emissor Nacional para o mesmo serviço.
+
+Falta: ligar o Hotel em Dia e fazer a virada do TreinaEdu (spec §6 e §10).
 
 O documento de desenho está em
 [docs/superpowers/specs/2026-08-11-notas-helpflux-design.md](docs/superpowers/specs/2026-08-11-notas-helpflux-design.md)

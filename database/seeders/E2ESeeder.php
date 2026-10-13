@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Models\Nota;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
@@ -48,9 +49,9 @@ class E2ESeeder extends Seeder
 
         // Uma nota já autorizada, para o E2E exercitar o cancelamento sem
         // depender de emitir e fechar dentro do teste.
-        \App\Models\Nota::updateOrCreate(
+        Nota::updateOrCreate(
             ['notaas_invoice_id' => 'fake-semente-emitida'],
-            array_merge(\App\Models\Nota::factory()->emitida()->raw(), [
+            array_merge(Nota::factory()->emitida()->raw(), [
                 'origem' => 'manual',
                 'referencia_externa' => null,
                 'tomador_nome' => 'Cliente Semente Ltda',

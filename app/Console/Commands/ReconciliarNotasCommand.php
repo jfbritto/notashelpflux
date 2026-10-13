@@ -6,6 +6,7 @@ use App\Models\Nota;
 use App\Services\Emissor\Emissor;
 use App\Services\FecharNota;
 use Illuminate\Console\Command;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -114,7 +115,7 @@ class ReconciliarNotasCommand extends Command
     }
 
     /** Emissor legítimo demora minutos, não dias. */
-    private function avisarSeMuitoTempo(Nota $nota, \Illuminate\Support\Carbon $desde, string $tipo): void
+    private function avisarSeMuitoTempo(Nota $nota, Carbon $desde, string $tipo): void
     {
         if ($desde->lt(now()->subDay())) {
             Log::warning("Nota com {$tipo} parado há mais de um dia no emissor", [

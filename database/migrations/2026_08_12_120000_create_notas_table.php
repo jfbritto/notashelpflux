@@ -15,7 +15,7 @@ return new class extends Migration
         Schema::create('notas', function (Blueprint $table) {
             $table->id();
 
-            $table->string('origem', 20);                     // treinaedu | helpdiet | manual
+            $table->string('origem', 20);                     // manual | treinaedu | helpdiet | hotelemdia (config/fiscal.php)
             $table->string('referencia_externa')->nullable();  // do SaaS de origem; nula na manual
             $table->string('perfil', 20);                      // software | nutricao
 

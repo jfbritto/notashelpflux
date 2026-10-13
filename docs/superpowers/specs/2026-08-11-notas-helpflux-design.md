@@ -90,7 +90,7 @@ Uma tabela para as três origens. O que muda entre elas é o valor da coluna
 
 | coluna | por quê |
 |---|---|
-| `origem` | `treinaedu` \| `helpdiet` \| `manual` |
+| `origem` | `manual` \| `treinaedu` \| `helpdiet` \| `hotelemdia` (lista em `config/fiscal.php`, `origens`) |
 | `referencia_externa` | a referência do SaaS de origem; nula em nota manual |
 | `perfil` | qual perfil de serviço foi usado (`software` \| `nutricao`) |
 | `tomador_tipo`, `tomador_documento`, `tomador_nome`, `tomador_email` | quem recebe |
@@ -141,6 +141,15 @@ mudam raramente e erram caro.
 `local_prestacao_padrao` diz apenas o que a tela **sugere**. A nota grava o
 município escolhido.
 
+**Reforma tributária (13/10/2026).** O perfil `software` ganhou o grupo
+`ibscbs` (CST `000`, cClassTrib `000001`, cIndOp `100501`), copiado de uma
+NFS-e real emitida no Emissor Nacional para o mesmo serviço (cTribNac
+01.05.01, NBS 1.1103.22.00). Vai no payload como `valores.ibscbs` com `cst`,
+`classificacaoTributaria`, `indicadorOperacao` e `nbs` (só dígitos), nomes
+conferidos em https://docs.notaas.com.br/endpoints. Os outros perfis ficam sem
+o grupo: a combinação não foi conferida contra nota real, a Notaas recusa
+tupla fora do Anexo VIII, e o Simples Nacional está dispensado em 2026.
+
 ### 4.3 A tabela `aplicacoes`
 
 Cada SaaS que emite pela API é uma linha. É ela que responde "quem é você e o
@@ -160,6 +169,16 @@ ser.** A chave de API só é verificada, então guardamos o hash e a exibimos um
 única vez na criação. O segredo do retorno precisa ser lido para assinar, então
 é guardado cifrado (`encrypted` cast), não hasheado. Confundir os dois deixaria
 o retorno impossível de assinar ou a chave recuperável em texto claro.
+
+**Implementado (13/10/2026).** `chave_hash` é o sha256 da chave, e a busca é
+por ele. As aplicações nascem e morrem por comando:
+`aplicacoes:criar {nome} {origem} {perfil} {callback_url}` sorteia chave e
+segredo (32 bytes cada) e os mostra uma vez; `aplicacoes:revogar {id}` marca
+`revogada_em`. O `criar` recusa a origem `manual`, perfil cujo local da
+prestação padrão é o do tomador (a API não recebe o IBGE do tomador; nutrição
+fica só na tela) e `callback_url` que não seja https. Pode haver mais de uma
+aplicação ativa por origem, para trocar a chave sem parar o SaaS: o retorno
+vai para a mais nova.
 
 ---
 
@@ -207,6 +226,74 @@ notas mostra (`treinaedu:resources/views/subscription/invoices.blade.php:58-66`)
 
 É o mesmo desenho do webhook que a Notaas usa conosco, e por isso o TreinaEdu já
 sabe consumi-lo.
+
+### O contrato como foi implementado (13/10/2026)
+
+Chave ausente, errada ou revogada: `401 {"message": "Chave de API inválida."}`,
+a mesma resposta nos três casos. Limite de 120 chamadas por minuto **por
+aplicação** (os SaaS dividem a VPS e o IP). Corpo inválido: 422 com os erros
+por campo.
+
+`POST /api/notas`:
+
+```json
+{
+  "referencia": "fatura-2026-10-001",
+  "tomador": {
+    "tipo": "pj",
+    "documento": "11222333000181",
+    "nome": "Hotel Exemplo Ltda",
+    "email": "financeiro@hotel.com.br",
+    "endereco": {
+      "logradouro": "Av. Beira Mar", "numero": "100", "complemento": "Sala 2",
+      "bairro": "Centro", "cidade": "Vitória", "uf": "ES", "cep": "29055450"
+    }
+  },
+  "valor": 199.90,
+  "descricao": "opcional; sem ela, a descrição padrão do perfil",
+  "competencia": "2026-10"
+}
+```
+
+Obrigatórios: `referencia`, `tomador.tipo` (`pf`/`pj`, e tem de bater com o
+documento), `tomador.documento` (CPF/CNPJ válido, com ou sem máscara),
+`tomador.nome`, `tomador.endereco.cidade`, `tomador.endereco.uf`, `valor`. A
+competência padrão é o mês corrente. O local da prestação é o padrão do perfil
+da aplicação (hoje, sempre o prestador). Qualquer outro campo no corpo
+(`origem`, `perfil`, códigos fiscais, URL) é ignorado. A nota segue o mesmo
+caminho da tela (`EmitirNota`); `201` quando nasce, `200` com a existente
+quando a referência já foi usada pela origem, sem reenviar ao emissor.
+
+Resposta, igual nas três rotas (a lista vem paginada, 50 por página, com
+`links` e `meta`):
+
+```json
+{"data": {"referencia": "fatura-2026-10-001", "status": "processando",
+          "numero": null, "chave_acesso": null, "pdf_url": null,
+          "xml_url": null, "erro": null, "emitida_em": null}}
+```
+
+`GET` de referência de outra origem responde 404, como se não existisse.
+
+O retorno é `POST` na `callback_url` com o corpo
+`{"event": "nota.emitida", "data": { ...a mesma nota da resposta acima... }}`,
+`X-Notas-Event` com o evento e `X-Notas-Signature: sha256=<hex>`, o
+HMAC-SHA256 do corpo cru com o segredo da aplicação (o mesmo formato do
+`X-Notaas-Signature`). Sai do `FecharNota`, por onde passam todas as
+transições: emissão, webhook, reconciliação, "Verificar agora" e cancelamento.
+O `FecharNota` trava a linha da nota enquanto aplica o desfecho, para que
+webhook e reconciliação fechando a mesma nota no mesmo segundo não mandem dois
+`nota.emitida`. `nota.documentos` sai quando chega link de PDF ou XML **novo**
+sem transição; o mesmo link repetido não gera nada. Só nota de origem com
+aplicação ativa tem retorno.
+
+O envio é o job `EnviarRetorno`: três tentativas, com 30 s e 120 s de espera.
+O corpo é montado na transição e vai pronto no job; o segredo é lido na hora
+de assinar e nunca vai para a fila. Redirecionamento conta como falha. As
+tentativas só existem com `QUEUE_CONNECTION=database`: o agendador roda
+`queue:work --stop-when-empty` a cada minuto, porque a VPS não tem supervisor.
+Com `sync` (o que a produção usava até aqui), o envio é uma tentativa só,
+feita na hora; a falha vai para o log e nunca derruba quem fechou a nota.
 
 ---
 
@@ -279,6 +366,9 @@ usuários são criados por comando.
   assinar (§4.3).
 - **Assinatura nos dois sentidos**: verificamos o HMAC da Notaas ao receber e
   assinamos o retorno aos SaaS, sempre com comparação em tempo constante.
+- **A chave da API resolve a origem.** Uma aplicação só lê as notas da sua
+  origem; nota de outra responde 404, e não 403, para não confirmar que
+  existe.
 - **Nenhum segredo em log.** O payload da emissão vai para o log em caso de erro
   (foi o que encurtou a depuração no TreinaEdu), mas ele não contém segredo:
   o prestador não viaja no corpo.
@@ -297,14 +387,16 @@ Caminhos cobertos:
 |---|---|
 | Emitir pela tela e ver a nota na lista com PDF | Playwright |
 | Repetir nota preenche o formulário | Playwright |
-| Chave de API inválida ou revogada recebe 401 | PHPUnit |
-| Mesma referência não vira duas notas | PHPUnit |
-| Aplicação com `origem = helpdiet` emite pelo seu próprio perfil | PHPUnit |
-| Webhook da Notaas fecha a nota e dispara o retorno | PHPUnit |
-| Assinatura inválida no webhook recebe 401 | PHPUnit |
-| Retorno é assinado com o segredo da aplicação | PHPUnit |
-| `documents_ready` vira `nota.documentos`, anexa links e não muda o status | PHPUnit |
-| Local da prestação diferente do prestador chega no payload | PHPUnit |
+| Chave de API inválida ou revogada recebe 401 | PHPUnit (`ApiNotasTest`) |
+| Mesma referência não vira duas notas | PHPUnit (`ApiNotasTest`) |
+| Aplicação com `origem = helpdiet` emite pelo seu próprio perfil | PHPUnit (`ApiNotasTest`) |
+| Webhook da Notaas fecha a nota e dispara o retorno | PHPUnit (`RetornoAplicacaoTest`) |
+| Assinatura inválida no webhook recebe 401 | PHPUnit (`NotaasWebhookTest`) |
+| Retorno é assinado com o segredo da aplicação | PHPUnit (`RetornoAplicacaoTest`) |
+| `documents_ready` vira `nota.documentos`, anexa links e não muda o status | PHPUnit (`RetornoAplicacaoTest`) |
+| Local da prestação diferente do prestador chega no payload | PHPUnit (`PayloadDaNotaTest`) |
+| `GET` de referência de outra origem responde 404 | PHPUnit (`ApiNotasTest`) |
+| `ibscbs` vai no payload do software e não nos outros perfis | PHPUnit (`PayloadDaNotaTest`) |
 
 Do lado do TreinaEdu, o `PlataformaNfseDriver` ganha o mesmo tratamento que o
 `NotaasNfseDriver` tem em `treinaedu:tests/Feature/Billing/NfseNotaasTest.php`.

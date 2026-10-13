@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Models\Nota;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -9,7 +10,7 @@ use Illuminate\Database\Eloquent\Factories\Factory;
  * emite hoje: tomador pessoa jurídica em Vitória, atendimento em Vitória,
  * ISS devido em Santa Maria de Jetibá.
  *
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\Nota>
+ * @extends Factory<Nota>
  */
 class NotaFactory extends Factory
 {

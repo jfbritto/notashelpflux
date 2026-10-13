@@ -3,8 +3,8 @@
 namespace Tests\Feature;
 
 use App\Models\Nota;
-use App\Services\EmitirNota;
 use App\Services\Emissor\EmissorFalso;
+use App\Services\EmitirNota;
 use App\Services\FecharNota;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;

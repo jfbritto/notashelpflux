@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Nota;
 use App\Models\User;
+use App\Services\Emissor\PayloadDaNota;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
@@ -138,7 +139,7 @@ class EmissaoManualTest extends TestCase
     {
         $this->actingAs($this->emissora)->post(route('notas.store'), $this->formulario(['perfil' => 'desenvolvimento']));
 
-        $servico = (new \App\Services\Emissor\PayloadDaNota)->montar(Nota::first())['servico'];
+        $servico = (new PayloadDaNota)->montar(Nota::first())['servico'];
 
         $this->assertSame('010101', $servico['codigo']);
         // Não existe campo para o item da LC 116 (tipo "1.01") no contrato da
