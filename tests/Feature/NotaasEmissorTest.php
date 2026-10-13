@@ -81,7 +81,7 @@ class NotaasEmissorTest extends TestCase
     }
 
     /** A Notaas já usou nomes diferentes; cair no terceiro campo é barato. */
-    public function test_a_chave_tambem_e_lida_de_numeroNfe(): void
+    public function test_a_chave_tambem_e_lida_de_numero_nfe(): void
     {
         Http::fake(['*/invoices/*/status' => Http::response([
             'status' => 'authorized',

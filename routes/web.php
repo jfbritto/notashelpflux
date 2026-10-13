@@ -1,6 +1,10 @@
 <?php
 
+use App\Http\Controllers\ConsultaController;
+use App\Http\Controllers\NotaasWebhookController;
+use App\Http\Controllers\NotaController;
 use App\Http\Controllers\ProfileController;
+use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Support\Facades\Route;
 
 // A plataforma tem um trabalho só: emitir nota. Não há página de apresentação
@@ -19,21 +23,21 @@ Route::get('/dashboard', fn () => redirect()->route('notas.index'))
 // com isSubclassOf. É a mesma linha que segura os webhooks do TreinaEdu em
 // produção. O teste de assinatura inválida prova de qualquer forma: com CSRF
 // ativo a resposta seria 419, não 401.
-Route::post('/webhooks/notaas', [\App\Http\Controllers\NotaasWebhookController::class, 'handle'])
+Route::post('/webhooks/notaas', [NotaasWebhookController::class, 'handle'])
     ->name('webhooks.notaas')
-    ->withoutMiddleware(\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class);
+    ->withoutMiddleware(VerifyCsrfToken::class);
 
 Route::middleware('auth')->group(function () {
-    Route::get('/notas', [\App\Http\Controllers\NotaController::class, 'index'])->name('notas.index');
-    Route::get('/notas/nova', [\App\Http\Controllers\NotaController::class, 'create'])->name('notas.create');
-    Route::post('/notas', [\App\Http\Controllers\NotaController::class, 'store'])->name('notas.store');
-    Route::post('/notas/{nota}/cancelar', [\App\Http\Controllers\NotaController::class, 'cancelar'])->name('notas.cancelar');
-    Route::post('/notas/{nota}/verificar', [\App\Http\Controllers\NotaController::class, 'verificar'])->name('notas.verificar');
+    Route::get('/notas', [NotaController::class, 'index'])->name('notas.index');
+    Route::get('/notas/nova', [NotaController::class, 'create'])->name('notas.create');
+    Route::post('/notas', [NotaController::class, 'store'])->name('notas.store');
+    Route::post('/notas/{nota}/cancelar', [NotaController::class, 'cancelar'])->name('notas.cancelar');
+    Route::post('/notas/{nota}/verificar', [NotaController::class, 'verificar'])->name('notas.verificar');
 
     // Conveniência do formulário. Autenticadas para não virarem proxy aberto
     // de consulta a serviço de terceiro em nome do nosso IP.
-    Route::get('/consultas/cep/{cep}', [\App\Http\Controllers\ConsultaController::class, 'cep'])->name('consultas.cep');
-    Route::get('/consultas/cnpj/{cnpj}', [\App\Http\Controllers\ConsultaController::class, 'cnpj'])->name('consultas.cnpj');
+    Route::get('/consultas/cep/{cep}', [ConsultaController::class, 'cep'])->name('consultas.cep');
+    Route::get('/consultas/cnpj/{cnpj}', [ConsultaController::class, 'cnpj'])->name('consultas.cnpj');
 
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
