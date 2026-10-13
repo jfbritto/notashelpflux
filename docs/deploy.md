@@ -77,8 +77,12 @@ DB_DATABASE=notas
 DB_USERNAME=notas
 DB_PASSWORD=<a senha criada acima>
 
-# Nada despacha job na fase 1; fila database sem worker engoliria em silêncio.
-QUEUE_CONNECTION=sync
+# O retorno aos SaaS (EnviarRetorno) é job com três tentativas. Elas só
+# existem com fila de verdade: `database`, esvaziada pelo agendador a cada
+# minuto (routes/console.php roda `queue:work --stop-when-empty`; não há
+# supervisor). Com `sync` o retorno sai uma vez só, na hora, e a falha fica
+# só no log. Trocar para `database` antes de ligar o primeiro SaaS.
+QUEUE_CONNECTION=database
 
 FISCAL_EMISSOR=notaas
 NOTAAS_API_KEY=<chave da conta Notaas>
@@ -180,9 +184,33 @@ A senha aparece uma vez só, na saída do comando.
 4. Conferir o limite do plano da Notaas. O gratuito é de 50 notas por mês, e a
    partir daqui as origens somam.
 
+## Ligar um SaaS à API
+
+A API e o retorno assinado estão no código (spec §5). Para ligar um SaaS (o
+primeiro é o Hotel em Dia), como `deploy`, em `/var/www/notas`:
+
+1. `QUEUE_CONNECTION=database` no `.env` e `php artisan config:cache`. Sem
+   isso o retorno sai uma vez só, sem as três tentativas.
+2. Criar a aplicação. Chave e segredo aparecem uma vez só; vão direto para o
+   `.env` do SaaS:
+
+   ```bash
+   php artisan aplicacoes:criar "Hotel em Dia" hotelemdia software https://<dominio-do-saas>/webhooks/notas
+   ```
+
+3. Primeira cobrança real conferida de ponta a ponta: nota emitida, retorno
+   `nota.emitida` recebido e assinatura conferida no SaaS, `nota.documentos`
+   com o PDF.
+
+Trocar a chave: criar outra aplicação com a mesma origem, apontar o SaaS para
+ela e então `php artisan aplicacoes:revogar <id da antiga>`.
+
+**Enquanto o webhook da Notaas apontar para o TreinaEdu**, quem fecha as notas
+da API é a reconciliação (a cada 5 min), e o retorno sai dela. Funciona, só
+demora alguns minutos a mais.
+
 ## O que fica para o plano 2
 
-API para os SaaS, retorno assinado, virada do webhook (junto com
-`NFSE_DRIVER=plataforma` no TreinaEdu, na mesma janela, com a fila vazia) e,
-aí sim, `NOTAAS_WEBHOOK_SECRET` preenchido e a reconciliação relaxando para a
-cadência de rede de segurança.
+Virada do webhook (junto com `NFSE_DRIVER=plataforma` no TreinaEdu, na mesma
+janela, com a fila vazia) e, aí sim, `NOTAAS_WEBHOOK_SECRET` preenchido e a
+reconciliação relaxando para a cadência de rede de segurança.
