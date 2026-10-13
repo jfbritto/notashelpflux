@@ -30,7 +30,7 @@ class NotaController extends Controller
                 fn ($q) => $q->where('perfil', $request->query('perfil')),
             )
             ->when(
-                in_array($request->query('origem'), ['manual', 'treinaedu', 'helpdiet'], true),
+                in_array($request->query('origem'), array_keys(config('fiscal.origens')), true),
                 fn ($q) => $q->where('origem', $request->query('origem')),
             )
             ->latest('id')

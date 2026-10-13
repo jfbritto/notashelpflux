@@ -53,11 +53,47 @@ class PayloadDaNota
                 'descricao' => $nota->descricao,
                 'localPrestacao' => $nota->local_prestacao_ibge,
             ], fn ($v) => $v !== null),
-            'valores' => [
+            'valores' => array_filter([
                 'total' => (float) $nota->valor,
                 'aliquotaIss' => (float) $perfil['aliquota'],
                 'issRetido' => false,
-            ],
+                'ibscbs' => $this->ibscbs($perfil),
+            ], fn ($v) => $v !== null),
+        ], fn ($v) => $v !== null);
+    }
+
+    /**
+     * O grupo da reforma tributária (IBS/CBS), só para o perfil que o tem.
+     *
+     * Nomes conferidos em https://docs.notaas.com.br/endpoints (13/10/2026),
+     * tabela "Reforma Tributária — IBS / CBS": `valores.ibscbs` com
+     * `classificacaoTributaria` (cClassTrib, 6 dígitos), `indicadorOperacao`
+     * (cIndOp, 6 dígitos), `cst` (CST IBS/CBS, 3 dígitos) e `nbs` (9
+     * dígitos). É a mesma armadilha do `localPrestacao` no topo desta classe:
+     * a Notaas ignora em silêncio chave que não conhece e cai no padrão do
+     * projeto, então um nome errado aqui não daria erro nenhum, só uma nota
+     * com o enquadramento que ninguém escolheu.
+     *
+     * Perfil sem `ibscbs` não manda o grupo: aí vale o que estiver no painel
+     * da Notaas ou a resolução automática dela, que é melhor do que um
+     * enquadramento chutado (ver config/fiscal.php).
+     *
+     * @param  array<string, mixed>  $perfil
+     * @return array<string, string>|null
+     */
+    private function ibscbs(array $perfil): ?array
+    {
+        if (empty($perfil['ibscbs'])) {
+            return null;
+        }
+
+        return array_filter([
+            'cst' => $perfil['ibscbs']['cst'],
+            'classificacaoTributaria' => $perfil['ibscbs']['classificacao_tributaria'],
+            'indicadorOperacao' => $perfil['ibscbs']['indicador_operacao'],
+            // Só dígitos, como o `servico.nbs`: a API recusou a forma
+            // pontuada na primeira emissão real (14/08/2026).
+            'nbs' => isset($perfil['nbs']) ? preg_replace('/\D/', '', $perfil['nbs']) : null,
         ], fn ($v) => $v !== null);
     }
 

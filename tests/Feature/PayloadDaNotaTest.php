@@ -119,6 +119,43 @@ class PayloadDaNotaTest extends TestCase
         $this->assertArrayNotHasKey('nbs', $servico);
     }
 
+    /**
+     * Reforma tributária: os valores de uma NFS-e real do Emissor Nacional
+     * para este serviço, nos nomes que a documentação da Notaas dá
+     * (https://docs.notaas.com.br/endpoints, "Reforma Tributária — IBS /
+     * CBS"). Nome errado aqui seria ignorado em silêncio pela Notaas, como
+     * foi o `codigoMunicipio`; este teste trava os nomes.
+     */
+    public function test_a_nota_de_software_leva_o_grupo_ibscbs(): void
+    {
+        $valores = (new PayloadDaNota)->montar(Nota::factory()->create(['perfil' => 'software']))['valores'];
+
+        $this->assertSame([
+            'cst' => '000',
+            'classificacaoTributaria' => '000001',
+            'indicadorOperacao' => '100501',
+            'nbs' => '111032200',
+        ], $valores['ibscbs']);
+        // No grupo de valores, e não no de serviço: é o que tem precedência.
+        $this->assertArrayNotHasKey('ibscbs', (new PayloadDaNota)->montar(Nota::factory()->create(['perfil' => 'software']))['servico']);
+    }
+
+    /**
+     * Nos outros perfis a combinação não foi conferida contra nota real.
+     * Sem o grupo, vale o que a Notaas resolver; com um chute, sairia uma
+     * nota com enquadramento que ninguém escolheu.
+     */
+    public function test_os_outros_perfis_nao_mandam_ibscbs(): void
+    {
+        foreach (['nutricao', 'desenvolvimento'] as $perfil) {
+            $valores = (new PayloadDaNota)->montar(Nota::factory()->create(['perfil' => $perfil]))['valores'];
+
+            $this->assertArrayNotHasKey('ibscbs', $valores, "o perfil {$perfil} não deveria mandar ibscbs");
+            // O resto do grupo de valores segue igual.
+            $this->assertSame(['total', 'aliquotaIss', 'issRetido'], array_keys($valores));
+        }
+    }
+
     public function test_pessoa_fisica_vai_como_cpf_e_juridica_como_cnpj(): void
     {
         $pf = (new PayloadDaNota)->montar(Nota::factory()->create([
