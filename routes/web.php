@@ -4,7 +4,7 @@ use App\Http\Controllers\ConsultaController;
 use App\Http\Controllers\NotaasWebhookController;
 use App\Http\Controllers\NotaController;
 use App\Http\Controllers\ProfileController;
-use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
+use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Support\Facades\Route;
 
 // A plataforma tem um trabalho só: emitir nota. Não há página de apresentação
@@ -18,14 +18,18 @@ Route::get('/dashboard', fn () => redirect()->route('notas.index'))
 // Retorno da Notaas. Fora do CSRF porque é chamada de servidor para servidor,
 // e protegido pela assinatura HMAC conferida no controller.
 //
-// A exclusão parece errada porque o grupo `web` aplica ValidateCsrfToken, mas
-// ela funciona: ValidateCsrfToken estende VerifyCsrfToken e o Router compara
-// com isSubclassOf. É a mesma linha que segura os webhooks do TreinaEdu em
-// produção. O teste de assinatura inválida prova de qualquer forma: com CSRF
-// ativo a resposta seria 419, não 401.
+// Exclui a classe-mãe. No Laravel 13 o grupo `web` aplica PreventRequestForgery,
+// e VerifyCsrfToken e ValidateCsrfToken são filhas dela. O Router só tira o
+// middleware que é a classe excluída ou uma filha dela, então excluir
+// VerifyCsrfToken (como estava até 13/10/2026) deixava o CSRF ligado. A Notaas
+// recebia 419 e as notas só fechavam pela reconciliação.
+//
+// O teste de assinatura inválida não pegava isso: nos testes o Laravel desliga
+// o CSRF sozinho. Quem pega é RotaDoWebhookSemCsrfTest, que confere a pilha de
+// middleware da rota.
 Route::post('/webhooks/notaas', [NotaasWebhookController::class, 'handle'])
     ->name('webhooks.notaas')
-    ->withoutMiddleware(VerifyCsrfToken::class);
+    ->withoutMiddleware(PreventRequestForgery::class);
 
 Route::middleware('auth')->group(function () {
     Route::get('/notas', [NotaController::class, 'index'])->name('notas.index');

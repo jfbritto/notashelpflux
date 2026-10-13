@@ -41,8 +41,8 @@ class NotaasWebhookTest extends TestCase
 
         $corpo = ['event' => 'nfse.issued', 'data' => ['invoiceId' => 'abc-123']];
 
-        // 401 e não 419: se o CSRF estivesse ativo nesta rota, seria 419, e
-        // este teste também prova que a exclusão de middleware funciona.
+        // Nos testes o Laravel desliga o CSRF sozinho: a exclusão da rota é
+        // conferida no RotaDoWebhookSemCsrfTest, não aqui.
         $this->enviar($corpo, $this->assinado($corpo, 'segredo-errado'))->assertStatus(401);
 
         $this->assertSame('processando', $nota->fresh()->status);
