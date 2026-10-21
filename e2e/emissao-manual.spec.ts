@@ -41,6 +41,7 @@ test.describe('emissão manual', () => {
           email: 'financeiro@exemplo.test',
           logradouro: 'RUA JOAO DA SILVA ABREU',
           numero: '78',
+          complemento: 'CONJ 107',
           bairro: 'PRAIA DO CANTO',
           cidade: 'VITORIA',
           uf: 'ES',
@@ -59,6 +60,7 @@ test.describe('emissão manual', () => {
     await expect(page.locator('#tomador_nome')).toHaveValue('CLINICA EXEMPLO LTDA');
     await expect(page.locator('#tomador_email')).toHaveValue('financeiro@exemplo.test');
     await expect(page.locator('#tomador_numero')).toHaveValue('78');
+    await expect(page.locator('#tomador_complemento')).toHaveValue('CONJ 107');
     await expect(page.locator('#tomador_cep')).toHaveValue('29055-450');
     // A cidade da Receita vem em maiúsculas e sem acento; o CEP a corrige.
     await expect(page.locator('#tomador_cidade')).toHaveValue('Vitória');
@@ -120,7 +122,7 @@ test.describe('emissão manual', () => {
 
     // Desenvolvimento: o serviço passa a constar como prestado na sede.
     await page.getByRole('button', { name: 'Desenvolvimento de sistemas' }).click();
-    await expect(page.locator('#descricao')).toHaveValue('Serviços de análise e desenvolvimento de sistemas');
+    await expect(page.locator('#descricao')).toHaveValue('Análise e desenvolvimento de sistemas.');
     await expect(page.locator('#local_prestacao_nome')).toHaveValue('Santa Maria de Jetibá');
 
     await page.getByRole('button', { name: 'Atendimento nutricional' }).click();

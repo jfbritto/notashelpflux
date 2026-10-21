@@ -152,6 +152,12 @@ conferidos em https://docs.notaas.com.br/endpoints. Os outros perfis ficam sem
 o grupo: a combinação não foi conferida contra nota real, a Notaas recusa
 tupla fora do Anexo VIII, e o Simples Nacional está dispensado em 2026.
 
+**21/10/2026.** O perfil `desenvolvimento` ganhou o mesmo grupo, conferido
+contra a NFS-e nº 25 emitida no portal em 23/09/2026 (cTribNac 01.01.01, NBS
+1.1502.20.00). A primeira nota de desenvolvimento pela plataforma saiu sem
+ele, e a comparação com a do portal mostrou a diferença. Só a nutrição segue
+sem o grupo.
+
 ### 4.3 A tabela `aplicacoes`
 
 Cada SaaS que emite pela API é uma linha. É ela que responde "quem é você e o
@@ -402,7 +408,7 @@ Caminhos cobertos:
 | `documents_ready` vira `nota.documentos`, anexa links e não muda o status | PHPUnit (`RetornoAplicacaoTest`) |
 | Local da prestação diferente do prestador chega no payload | PHPUnit (`PayloadDaNotaTest`) |
 | `GET` de referência de outra origem responde 404 | PHPUnit (`ApiNotasTest`) |
-| `ibscbs` vai no payload do software e não nos outros perfis | PHPUnit (`PayloadDaNotaTest`) |
+| `ibscbs` vai no payload do software e do desenvolvimento, e não no da nutrição | PHPUnit (`PayloadDaNotaTest`) |
 
 Do lado do TreinaEdu, o `PlataformaNfseDriver` ganha o mesmo tratamento que o
 `NotaasNfseDriver` tem em `treinaedu:tests/Feature/Billing/NfseNotaasTest.php`.

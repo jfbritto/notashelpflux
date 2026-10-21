@@ -113,6 +113,9 @@ class ConsultaController extends Controller
             'email' => mb_strtolower(trim((string) ($d['email'] ?? ''))) ?: null,
             'logradouro' => $logradouro ?: null,
             'numero' => trim((string) ($d['numero'] ?? '')) ?: null,
+            // "CONJ 107", "SALA 2": sem ele o endereço da nota sai menos
+            // preciso que o da emitida à mão no portal.
+            'complemento' => trim((string) ($d['complemento'] ?? '')) ?: null,
             'bairro' => trim((string) ($d['bairro'] ?? '')) ?: null,
             // Em maiúsculas e sem acento, como a Receita grava. A tela
             // completa pelo CEP, que traz o nome como a nota deve mostrar.

@@ -133,16 +133,20 @@
                             <input id="tomador_numero" name="tomador_numero" class="{{ $campo }}" placeholder="123" x-model="numero">
                         </div>
                         <div class="sm:col-span-4">
+                            <label for="tomador_complemento" class="mb-1.5 block text-sm font-medium text-gray-700">Complemento</label>
+                            <input id="tomador_complemento" name="tomador_complemento" class="{{ $campo }}" x-model="complemento" placeholder="Sala, conjunto, andar (opcional)">
+                        </div>
+                        <div class="sm:col-span-2">
                             <label for="tomador_bairro" class="mb-1.5 block text-sm font-medium text-gray-700">Bairro</label>
                             <input id="tomador_bairro" name="tomador_bairro" class="{{ $campo }}" x-model="bairro" placeholder="Centro">
                         </div>
-                        <div class="sm:col-span-4">
+                        <div class="sm:col-span-3">
                             <label for="tomador_cidade" class="mb-1.5 block text-sm font-medium text-gray-700">Cidade <span class="text-red-500">*</span></label>
                             <input id="tomador_cidade" name="tomador_cidade" class="{{ $campo }}" placeholder="Vitória"
                                    x-model="cidade" @input="sugerirLocal()">
                             @error('tomador_cidade') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                         </div>
-                        <div class="sm:col-span-2">
+                        <div class="sm:col-span-1">
                             <label for="tomador_uf" class="mb-1.5 block text-sm font-medium text-gray-700">UF <span class="text-red-500">*</span></label>
                             <select id="tomador_uf" name="tomador_uf" class="{{ $campo }}" x-model="uf">
                                 <option value=""></option>
@@ -214,6 +218,7 @@
                 cep: inicial.cep,
                 logradouro: @js(old('tomador_logradouro', $modelo->tomador_logradouro ?? '')),
                 numero: @js(old('tomador_numero', $modelo->tomador_numero ?? '')),
+                complemento: @js(old('tomador_complemento', $modelo->tomador_complemento ?? '')),
                 bairro: @js(old('tomador_bairro', $modelo->tomador_bairro ?? '')),
                 cidade: inicial.cidade,
                 uf: inicial.uf,
@@ -397,6 +402,10 @@
                         por('cep', this.mascararCep(d.cep));
                         por('logradouro', d.logradouro);
                         por('numero', d.numero);
+                        // Cliente trocado: a sala do anterior não serve, mesmo
+                        // que o novo não tenha complemento.
+                        if (trocou) this.complemento = d.complemento || '';
+                        else por('complemento', d.complemento);
                         por('bairro', d.bairro);
                         por('cidade', d.cidade);
                         por('uf', d.uf);
