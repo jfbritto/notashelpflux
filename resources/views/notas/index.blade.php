@@ -1,8 +1,14 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex items-center justify-between">
-            <h2 class="text-xl font-semibold leading-tight text-gray-800">Notas fiscais</h2>
-            <a href="{{ route('notas.create') }}" class="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700">
+        <div class="flex flex-wrap items-center justify-between gap-4">
+            <div>
+                <h2 class="text-2xl font-semibold leading-tight text-white">Notas fiscais</h2>
+                <p class="mt-1 text-sm text-emerald-200">
+                    {{ auth()->user()->ehAdmin() ? 'Todas as notas do CNPJ da HelpFlux, da tela e dos sistemas.' : 'As notas emitidas por aqui.' }}
+                </p>
+            </div>
+            <a href="{{ route('notas.create') }}" class="inline-flex items-center gap-2 rounded-lg bg-white px-4 py-2.5 text-sm font-semibold text-emerald-800 shadow-sm transition hover:bg-emerald-50">
+                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
                 Emitir nota
             </a>
         </div>
@@ -68,10 +74,10 @@
                 @endif
             </form>
 
-            <div class="overflow-hidden rounded-xl bg-white shadow-sm">
+            <div class="overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-emerald-900/5">
                 <div class="overflow-x-auto">
                     <table class="w-full text-sm">
-                        <thead class="border-b border-gray-100 bg-gray-50">
+                        <thead class="border-b border-emerald-100 bg-emerald-50/60">
                             <tr>
                                 <th class="whitespace-nowrap px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Data</th>
                                 <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Cliente</th>
@@ -88,7 +94,12 @@
                                     <td class="whitespace-nowrap px-6 py-4 text-xs text-gray-500">{{ $nota->created_at->format('d/m/Y') }}</td>
                                     <td class="px-6 py-4">
                                         <p class="font-medium text-gray-800">{{ $nota->tomador_nome }}</p>
-                                        <p class="text-xs text-gray-400">{{ $nota->local_prestacao_nome }}</p>
+                                        <p class="text-xs text-gray-400">
+                                            {{-- Cada pedaço inteiro: se faltar espaço, quebra entre o
+                                                 documento e a cidade, nunca no meio de "Santa Maria de Jetibá". --}}
+                                            <span class="whitespace-nowrap tabular-nums">{{ $nota->documentoDoTomador() }} <span aria-hidden="true">·</span></span>
+                                            <span class="whitespace-nowrap">{{ $nota->local_prestacao_nome }}</span>
+                                        </p>
                                     </td>
                                     <td class="px-6 py-4">
                                         <p class="text-xs font-medium text-gray-700">{{ $perfis[$nota->perfil]['rotulo'] ?? ucfirst($nota->perfil) }}</p>
@@ -168,6 +179,9 @@
                             @empty
                                 <tr>
                                     <td colspan="7" class="px-6 py-12 text-center">
+                                        <span class="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-900">
+                                            <x-simbolo-da-nota class="h-9 w-9" />
+                                        </span>
                                         <p class="text-sm font-medium text-gray-500">
                                             {{ request()->hasAny(['perfil', 'origem']) ? 'Nenhuma nota com esses filtros.' : 'Nenhuma nota ainda.' }}
                                         </p>

@@ -16,6 +16,21 @@ use Illuminate\Validation\Rule;
  */
 class EmitirNotaRequest extends FormRequest
 {
+    /**
+     * O valor chega da tela com a máscara de reais ("1.500,00") e vira o
+     * número que a validação e a coluna entendem. Sem vírgula ele já veio
+     * como número ("1500.00") e fica como está: tirar o ponto aí
+     * multiplicaria o valor por cem.
+     */
+    protected function prepareForValidation(): void
+    {
+        $valor = (string) $this->input('valor', '');
+
+        if (str_contains($valor, ',')) {
+            $this->merge(['valor' => str_replace(['R$', ' ', '.', ','], ['', '', '', '.'], $valor)]);
+        }
+    }
+
     public function rules(): array
     {
         return [

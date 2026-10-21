@@ -1,6 +1,7 @@
 <x-app-layout>
     <x-slot name="header">
-        <h2 class="text-xl font-semibold leading-tight text-gray-800">Emitir nota</h2>
+        <h2 class="text-2xl font-semibold leading-tight text-white">Emitir nota</h2>
+        <p class="mt-1 text-sm text-emerald-200">Escolha o serviço, o cliente e o valor. A tributação sai do tipo de serviço.</p>
     </x-slot>
 
     @php
@@ -40,9 +41,9 @@
             <form method="POST" action="{{ route('notas.store') }}" x-data="formularioDaNota(@js($inicial))">
                 @csrf
 
-                <div class="mb-6 rounded-xl bg-white p-6 shadow-sm">
-                    <h3 class="mb-1 text-sm font-semibold text-gray-800">Tipo de serviço</h3>
-                    <p class="mb-5 text-xs text-gray-500">Define a tributação da nota. Na dúvida, é o que você prestou.</p>
+                <div class="mb-6 rounded-xl bg-white p-6 shadow-sm ring-1 ring-emerald-900/5">
+                    <x-cabecalho-da-secao icone="servico" titulo="Tipo de serviço"
+                                          subtitulo="Define a tributação da nota. Na dúvida, é o que você prestou." />
 
                     <div class="flex flex-wrap gap-3">
                         @foreach($perfis as $chave => $dados)
@@ -57,9 +58,9 @@
                     @error('perfil') <p class="mt-2 text-xs text-red-600">{{ $message }}</p> @enderror
                 </div>
 
-                <div class="mb-6 rounded-xl bg-white p-6 shadow-sm">
-                    <h3 class="mb-1 text-sm font-semibold text-gray-800">Cliente</h3>
-                    <p class="mb-5 text-xs text-gray-500">Quem consta como tomador na nota fiscal</p>
+                <div class="mb-6 rounded-xl bg-white p-6 shadow-sm ring-1 ring-emerald-900/5">
+                    <x-cabecalho-da-secao icone="cliente" titulo="Cliente"
+                                          subtitulo="Quem consta como tomador na nota fiscal. Com CNPJ, a Receita preenche o resto." />
 
                     <div class="mb-4">
                         <div class="inline-flex rounded-lg border border-gray-200 bg-gray-50 p-1">
@@ -113,9 +114,8 @@
                     </div>
                 </div>
 
-                <div class="mb-6 rounded-xl bg-white p-6 shadow-sm">
-                    <h3 class="mb-1 text-sm font-semibold text-gray-800">Endereço do cliente</h3>
-                    <p class="mb-5 text-xs text-gray-500">O CEP preenche o resto</p>
+                <div class="mb-6 rounded-xl bg-white p-6 shadow-sm ring-1 ring-emerald-900/5">
+                    <x-cabecalho-da-secao icone="endereco" titulo="Endereço do cliente" subtitulo="O CEP preenche o resto" />
 
                     <div class="grid grid-cols-1 gap-4 sm:grid-cols-6">
                         <div class="sm:col-span-2">
@@ -156,9 +156,8 @@
                     <input type="hidden" name="tomador_ibge" :value="ibge">
                 </div>
 
-                <div class="mb-6 rounded-xl bg-white p-6 shadow-sm">
-                    <h3 class="mb-1 text-sm font-semibold text-gray-800">O atendimento</h3>
-                    <p class="mb-5 text-xs text-gray-500">Onde foi feito e quanto custou</p>
+                <div class="mb-6 rounded-xl bg-white p-6 shadow-sm ring-1 ring-emerald-900/5">
+                    <x-cabecalho-da-secao icone="valor" titulo="O atendimento" subtitulo="Onde foi feito e quanto custou" />
 
                     <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                         <div>
@@ -174,8 +173,11 @@
 
                         <div>
                             <label for="valor" class="mb-1.5 block text-sm font-medium text-gray-700">Valor <span class="text-red-500">*</span></label>
-                            <input id="valor" name="valor" inputmode="decimal" class="{{ $campo }}"
-                                   value="{{ old('valor', $modelo->valor ?? '') }}" placeholder="0,00">
+                            <div class="relative">
+                                <span class="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm font-medium text-gray-400">R$</span>
+                                <input id="valor" name="valor" inputmode="numeric" class="{{ $campo }} pl-10"
+                                       x-model="valor" @input="valor = mascararValor(valor)" placeholder="0,00">
+                            </div>
                             @error('valor') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                         </div>
 
@@ -218,6 +220,7 @@
                 ibge: inicial.ibge,
                 localNome: inicial.localNome,
                 localIbge: inicial.localIbge,
+                valor: @js((string) old('valor', $modelo->valor ?? '')),
                 erroCep: '',
                 buscandoCnpj: false,
                 cnpjPreenchido: false,
@@ -231,6 +234,7 @@
                 init() {
                     this.documento = this.mascararDocumento(this.documento);
                     this.cep = this.mascararCep(this.cep);
+                    this.valor = this.mascararValor(this.valor);
 
                     if (!this.descricao) {
                         this.descricao = this.perfis[this.perfil].descricao;
@@ -291,6 +295,21 @@
                 mascararCep(v) {
                     const d = this.apenasDigitos(v).slice(0, 8);
                     return d.length > 5 ? d.slice(0, 5) + '-' + d.slice(5) : d;
+                },
+
+                /**
+                 * Reais como na maquininha: os dígitos entram pela direita e
+                 * os dois últimos são os centavos ("150000" vira "1.500,00").
+                 * Colar "1.500,00" ou "1500.00" dá o mesmo, porque só os
+                 * dígitos contam. Dez dígitos é o teto da coluna. O servidor
+                 * desfaz a máscara (EmitirNotaRequest).
+                 */
+                mascararValor(v) {
+                    const d = this.apenasDigitos(v).replace(/^0+(?=\d)/, '').slice(0, 10);
+                    if (!d) return '';
+                    const comCentavos = d.padStart(3, '0');
+                    const reais = comCentavos.slice(0, -2).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+                    return `${reais},${comCentavos.slice(-2)}`;
                 },
 
                 /**

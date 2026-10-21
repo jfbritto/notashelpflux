@@ -33,6 +33,21 @@ class Nota extends Model
         return config("fiscal.perfis.{$this->perfil}");
     }
 
+    /**
+     * O CPF ou CNPJ do tomador com a máscara, para a tela. A coluna guarda só
+     * os dígitos; o que não tiver 11 nem 14 sai como está.
+     */
+    public function documentoDoTomador(): string
+    {
+        $d = (string) $this->tomador_documento;
+
+        return match (strlen($d)) {
+            11 => preg_replace('/^(\d{3})(\d{3})(\d{3})(\d{2})$/', '$1.$2.$3-$4', $d),
+            14 => preg_replace('/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/', '$1.$2.$3/$4-$5', $d),
+            default => $d,
+        };
+    }
+
     /** Nota que não espera mais nada do emissor. */
     public function estaFechada(): bool
     {

@@ -88,6 +88,8 @@ test.describe('emissão manual', () => {
 
     await page.locator('#tomador_numero').fill('78');
     await page.locator('#valor').fill('2100.00');
+    // Reais como na maquininha: só os dígitos contam, os dois últimos são centavos.
+    await expect(page.locator('#valor')).toHaveValue('2.100,00');
 
     // A descrição já vem do perfil, e ela só complementa.
     await expect(page.locator('#descricao')).toHaveValue(/Atendimentos nutricionais/);
