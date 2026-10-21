@@ -40,6 +40,14 @@ class VerificarNota
         Cache::put($chave, true, self::JANELA_SEGUNDOS);
 
         $retorno = $this->emissor->consultar($nota->notaas_invoice_id);
+
+        // "Buscar PDF": a nota já está autorizada, só os links faltam.
+        if ($this->semDocumento($nota)) {
+            return $this->fecharNota->anexarDocumentos($nota, $retorno) && $nota->pdf_url
+                ? ['ok' => true, 'mensagem' => 'Documentos anexados: o PDF já está na lista.']
+                : ['ok' => true, 'mensagem' => 'O emissor ainda não terminou o PDF. Tente de novo em alguns minutos.'];
+        }
+
         $mudou = $this->fecharNota->aplicar($nota, $retorno);
 
         if (! $mudou) {
@@ -63,6 +71,19 @@ class VerificarNota
         }
 
         return $nota->status === 'processando'
-            || ($nota->status === 'emitida' && $nota->cancelamento_solicitado_em !== null);
+            || ($nota->status === 'emitida' && $nota->cancelamento_solicitado_em !== null)
+            || $this->semDocumento($nota);
+    }
+
+    /**
+     * Autorizada e sem PDF ou XML: a consulta que a fechou chegou antes de o
+     * emissor guardar os documentos, e o aviso de documentos prontos não veio
+     * (ver ReconciliarNotasCommand).
+     */
+    public function semDocumento(Nota $nota): bool
+    {
+        return $nota->status === 'emitida'
+            && $nota->cancelamento_solicitado_em === null
+            && ($nota->pdf_url === null || $nota->xml_url === null);
     }
 }

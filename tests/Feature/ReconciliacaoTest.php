@@ -124,4 +124,73 @@ class ReconciliacaoTest extends TestCase
 
         $this->assertSame('processando', $nota->refresh()->status);
     }
+
+    /** Nota emitida sem PDF nem XML, como a da Juliana em 21/10/2026. */
+    private function emitidaSemDocumento(string $emitidaHa = '10 minutes'): Nota
+    {
+        return Nota::factory()->emitida()->create([
+            'notaas_invoice_id' => 'abc-'.fake()->unique()->numberBetween(1, 99999),
+            'emitida_em' => now()->sub($emitidaHa),
+        ]);
+    }
+
+    /**
+     * A consulta que fechou a nota pode chegar antes de a Notaas guardar os
+     * documentos (documentsCached=false), e o nfse.documents_ready, que
+     * traria os links, ela desiste de mandar depois das tentativas dela. Sem
+     * ir atrás, a nota fica emitida e sem PDF para sempre.
+     */
+    public function test_nota_emitida_sem_documento_ganha_os_links(): void
+    {
+        $nota = $this->emitidaSemDocumento();
+        EmissorFalso::responderConsultaCom([
+            'status' => 'emitida',
+            'pdf_url' => 'https://storage.notaas.test/n.pdf',
+            'xml_url' => 'https://storage.notaas.test/n.xml',
+        ]);
+
+        $this->artisan('notas:reconciliar', ['--minutos' => 2])->assertSuccessful();
+
+        $nota->refresh();
+        $this->assertSame('emitida', $nota->status);
+        $this->assertSame('https://storage.notaas.test/n.pdf', $nota->pdf_url);
+        $this->assertSame('https://storage.notaas.test/n.xml', $nota->xml_url);
+    }
+
+    /** Ir atrás do documento só anexa links: a situação da nota não muda. */
+    public function test_buscar_documento_nunca_muda_a_situacao(): void
+    {
+        $nota = $this->emitidaSemDocumento();
+        EmissorFalso::responderConsultaCom(['status' => 'erro', 'erro' => 'falha qualquer']);
+
+        $this->artisan('notas:reconciliar', ['--minutos' => 2])->assertSuccessful();
+
+        $this->assertSame('emitida', $nota->refresh()->status);
+        $this->assertNull($nota->erro);
+    }
+
+    /**
+     * A Notaas guarda os documentos em minutos. Passado um dia, consultar a
+     * cada 5 minutos não traz nada, e a nota sai da lista de quem vai atrás.
+     */
+    public function test_nota_emitida_sem_documento_ha_mais_de_um_dia_fica_de_fora(): void
+    {
+        $nota = $this->emitidaSemDocumento('2 days');
+        EmissorFalso::responderConsultaCom(['status' => 'emitida', 'pdf_url' => 'https://storage.notaas.test/n.pdf']);
+
+        $this->artisan('notas:reconciliar', ['--minutos' => 2])->assertSuccessful();
+
+        $this->assertNull($nota->refresh()->pdf_url);
+    }
+
+    /** Recém-emitida ainda tem o webhook de documentos a caminho. */
+    public function test_nota_recem_emitida_espera_o_webhook_de_documentos(): void
+    {
+        $nota = $this->emitidaSemDocumento('1 minute');
+        EmissorFalso::responderConsultaCom(['status' => 'emitida', 'pdf_url' => 'https://storage.notaas.test/n.pdf']);
+
+        $this->artisan('notas:reconciliar', ['--minutos' => 2])->assertSuccessful();
+
+        $this->assertNull($nota->refresh()->pdf_url);
+    }
 }

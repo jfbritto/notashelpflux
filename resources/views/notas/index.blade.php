@@ -148,7 +148,20 @@
                                             @if($nota->xml_url)
                                                 <a href="{{ $nota->xml_url }}" target="_blank" rel="noopener" class="font-medium text-gray-500 hover:text-gray-700">XML</a>
                                             @endif
-                                            @if(! $nota->pdf_url && ! $nota->xml_url)
+                                            {{-- Autorizada e sem PDF: o aviso de documentos prontos da
+                                                 Notaas pode não vir. A reconciliação vai atrás no primeiro
+                                                 dia; o botão é para quem não quer esperar. --}}
+                                            @php
+                                                $buscarPdf = $nota->status === 'emitida' && ! $nota->cancelamento_solicitado_em
+                                                    && ! $nota->pdf_url && $nota->notaas_invoice_id
+                                                    && ($ehAdmin || $nota->origem === 'manual');
+                                            @endphp
+                                            @if($buscarPdf)
+                                                <form method="POST" action="{{ route('notas.verificar', $nota) }}">
+                                                    @csrf
+                                                    <button type="submit" class="text-xs font-medium text-emerald-600 hover:text-emerald-700">Buscar PDF</button>
+                                                </form>
+                                            @elseif(! $nota->pdf_url && ! $nota->xml_url)
                                                 <span class="text-xs text-gray-300">&mdash;</span>
                                             @endif
                                         </div>

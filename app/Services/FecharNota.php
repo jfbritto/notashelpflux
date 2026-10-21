@@ -103,4 +103,27 @@ class FecharNota
 
         return $transicao;
     }
+
+    /**
+     * Só os links de PDF e XML de um retorno do emissor, sem mexer na
+     * situação: é o que o nfse.documents_ready faz no webhook, e o que a
+     * reconciliação e o "Buscar PDF" fazem com a nota emitida que ficou sem
+     * documento. Uma consulta que respondesse "erro" ou "processando" para
+     * uma nota já autorizada não pode desfazê-la por esse caminho.
+     *
+     * @param  array<string, mixed>  $retorno  no formato do contrato Emissor
+     * @return bool algum link novo foi anexado
+     */
+    public function anexarDocumentos(Nota $nota, array $retorno): bool
+    {
+        $antes = [$nota->pdf_url, $nota->xml_url];
+
+        $this->aplicar($nota, [
+            'status' => 'processando',
+            'pdf_url' => $retorno['pdf_url'] ?? null,
+            'xml_url' => $retorno['xml_url'] ?? null,
+        ]);
+
+        return [$nota->pdf_url, $nota->xml_url] !== $antes;
+    }
 }
