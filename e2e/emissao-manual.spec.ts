@@ -23,7 +23,50 @@ test.describe('emissão manual', () => {
       }),
     );
 
+    // A Receita também: por padrão "não achei", para os testes que digitam o
+    // CNPJ e a razão social à mão não dependerem de quando (ou se) a consulta
+    // de verdade responderia.
+    await page.route('**/consultas/cnpj/**', (route) => route.fulfill({ status: 204 }));
+
     await entrarComo(page, EMISSORA);
+  });
+
+  test('colar o CNPJ preenche o cliente pela Receita', async ({ page }) => {
+    await page.route('**/consultas/cnpj/**', (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          nome: 'CLINICA EXEMPLO LTDA',
+          email: 'financeiro@exemplo.test',
+          logradouro: 'RUA JOAO DA SILVA ABREU',
+          numero: '78',
+          bairro: 'PRAIA DO CANTO',
+          cidade: 'VITORIA',
+          uf: 'ES',
+          cep: '29055450',
+          ibge: '3205309',
+          situacao: 'ATIVA',
+        }),
+      }),
+    );
+
+    await page.goto('/notas/nova');
+    await page.getByRole('button', { name: 'Desenvolvimento de sistemas' }).click();
+
+    await page.locator('#tomador_documento').fill('11.222.333/0001-81');
+
+    await expect(page.locator('#tomador_nome')).toHaveValue('CLINICA EXEMPLO LTDA');
+    await expect(page.locator('#tomador_email')).toHaveValue('financeiro@exemplo.test');
+    await expect(page.locator('#tomador_numero')).toHaveValue('78');
+    await expect(page.locator('#tomador_cep')).toHaveValue('29055-450');
+    // A cidade da Receita vem em maiúsculas e sem acento; o CEP a corrige.
+    await expect(page.locator('#tomador_cidade')).toHaveValue('Vitória');
+    await expect(page.locator('#tomador_logradouro')).toHaveValue('Rua João da Silva Abreu');
+    await expect(page.getByText('Preenchemos com os dados da Receita Federal')).toBeVisible();
+    // Não emite: os testes dividem o banco, e uma nota a mais na lista mudaria
+    // o que os seguintes encontram. Que os campos preenchidos chegam ao
+    // servidor, os testes de emissão abaixo já provam.
   });
 
   test('emite uma nota e ela aparece na lista', async ({ page }) => {

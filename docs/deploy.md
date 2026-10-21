@@ -4,10 +4,12 @@
 da HelpFlux. O deploy é o mesmo padrão do TreinaEdu: GitHub Actions roda os
 testes e, passando, executa um script por SSH como usuário `deploy`.
 
-**Fase 1: a plataforma vive SEM webhook.** A conta da Notaas tem um webhook só
-e ele aponta para o TreinaEdu, que precisa dele em produção. Quem fecha as
-notas daqui é a reconciliação (`notas:reconciliar`), a cada 5 minutos, até a
-virada do plano 2. Não mexer no webhook do painel da Notaas.
+**Webhook da Notaas (desde 13/10/2026).** A conta da Notaas tem dois endpoints
+ativos: o antigo do TreinaEdu, que fecha as notas emitidas lá antes da virada,
+e `https://notas.helpflux.com.br/webhooks/notaas`. Este só funciona desde o
+PR #6: até ali respondia 419 (o CSRF do Laravel 13 não era excluído de
+verdade), e quem fechava as notas daqui era a reconciliação. A reconciliação
+(`notas:reconciliar`) continua a cada 5 minutos, como rede de segurança.
 
 ## Antes de tudo: DNS
 
@@ -86,15 +88,18 @@ QUEUE_CONNECTION=database
 
 FISCAL_EMISSOR=notaas
 NOTAAS_API_KEY=<chave da conta Notaas>
-# SEM webhook na fase 1 (ele é do TreinaEdu). Deixar vazio; entra no plano 2.
-NOTAAS_WEBHOOK_SECRET=
+# Segredo de assinatura do endpoint /webhooks/notaas, do painel da Notaas.
+# Vazio, a rota aceita qualquer POST como se viesse da Notaas: com o endpoint
+# cadastrado lá, ele precisa estar preenchido.
+NOTAAS_WEBHOOK_SECRET=<segredo do webhook no painel da Notaas>
 ```
 
 Depois do `.env`: `php artisan key:generate && php artisan migrate --force`
 (como `deploy`).
 
 O agendador entra no cron **do `deploy`** (não do root, pela mesma razão das
-permissões). É ele que roda a reconciliação que fecha as notas na fase 1:
+permissões). É ele que roda a reconciliação, que fecha o que o webhook não
+fechou, e esvazia a fila do retorno aos SaaS:
 
 ```bash
 sudo -u deploy bash -c '(crontab -l 2>/dev/null; echo "* * * * * cd /var/www/notas && php artisan schedule:run >> /dev/null 2>&1") | crontab -'
@@ -131,8 +136,8 @@ echo ">> Deploy das notas completo"
 ```
 
 Sem reload do php-fpm: o opcache revalida sozinho (mesmo comportamento do
-deploy do TreinaEdu) e isso evita dar sudoers ao script. Sem supervisor: não
-há worker de fila na fase 1.
+deploy do TreinaEdu) e isso evita dar sudoers ao script. Sem supervisor: quem
+esvazia a fila do retorno é o próprio agendador (`routes/console.php`).
 
 ## GitHub Actions (deploy automático)
 
@@ -186,8 +191,10 @@ A senha aparece uma vez só, na saída do comando.
 
 ## Ligar um SaaS à API
 
-A API e o retorno assinado estão no código (spec §5). Para ligar um SaaS (o
-primeiro é o Hotel em Dia), como `deploy`, em `/var/www/notas`:
+A API e o retorno assinado estão no código (spec §5). Ligados em 13/10/2026:
+aplicação 1, Hotel em Dia (`hotelemdia`, perfil `software`), e aplicação 2,
+TreinaEdu (`treinaedu`, perfil `software`). Para ligar outro SaaS, como
+`deploy`, em `/var/www/notas`:
 
 1. `QUEUE_CONNECTION=database` no `.env` e `php artisan config:cache`. Sem
    isso o retorno sai uma vez só, sem as três tentativas.
@@ -205,12 +212,21 @@ primeiro é o Hotel em Dia), como `deploy`, em `/var/www/notas`:
 Trocar a chave: criar outra aplicação com a mesma origem, apontar o SaaS para
 ela e então `php artisan aplicacoes:revogar <id da antiga>`.
 
-**Enquanto o webhook da Notaas apontar para o TreinaEdu**, quem fecha as notas
-da API é a reconciliação (a cada 5 min), e o retorno sai dela. Funciona, só
-demora alguns minutos a mais.
+A nota da API fecha pelo webhook, e o retorno sai dele. Se o webhook não
+chegar, a reconciliação fecha em até 5 minutos e o retorno sai dela.
 
-## O que fica para o plano 2
+## A virada do TreinaEdu (13/10/2026)
 
-Virada do webhook (junto com `NFSE_DRIVER=plataforma` no TreinaEdu, na mesma
-janela, com a fila vazia) e, aí sim, `NOTAAS_WEBHOOK_SECRET` preenchido e a
-reconciliação relaxando para a cadência de rede de segurança.
+Feita: o TreinaEdu emite pela plataforma (`NFSE_DRIVER=plataforma`, PR #930 de
+lá), com o retorno em `https://treinaedu.com/nfse/plataforma/webhook`.
+**Rollback:** `NFSE_DRIVER=notaas` no `.env` do TreinaEdu, depois
+`config:cache` e `queue:restart`, como `deploy`.
+
+Falta:
+
+1. Conferir a primeira nota real do TreinaEdu de ponta a ponta: emitida aqui,
+   `nota.emitida` e `nota.documentos` recebidos lá, PDF na tela do cliente.
+2. Apagar o endpoint antigo do TreinaEdu no painel da Notaas, quando não
+   houver mais nota emitida pelo caminho antigo em `processando`.
+3. Relaxar a reconciliação para a cadência de rede de segurança (hourly, com
+   a janela padrão de 30 minutos).
