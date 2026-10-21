@@ -78,10 +78,21 @@
                             <label for="tomador_documento" class="mb-1.5 block text-sm font-medium text-gray-700">
                                 <span x-text="ehPj ? 'CNPJ' : 'CPF'"></span> <span class="text-red-500">*</span>
                             </label>
-                            <input id="tomador_documento" name="tomador_documento" inputmode="numeric"
-                                   x-model="documento" @input="documento = mascararDocumento(documento)"
-                                   :placeholder="ehPj ? '00.000.000/0000-00' : '000.000.000-00'"
-                                   class="{{ $campo }}">
+                            {{-- Colado ou digitado, o CNPJ completo busca a empresa na
+                                 Receita e preenche o cliente (ConsultaController::cnpj). --}}
+                            <div class="relative">
+                                <input id="tomador_documento" name="tomador_documento" inputmode="numeric"
+                                       x-model="documento" @input="documento = mascararDocumento(documento); consultarCnpj()"
+                                       @blur="consultarCnpj()"
+                                       :placeholder="ehPj ? '00.000.000/0000-00' : '000.000.000-00'"
+                                       :aria-busy="buscandoCnpj ? 'true' : 'false'"
+                                       class="{{ $campo }} pr-9">
+                                <svg x-show="buscandoCnpj" x-cloak class="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-emerald-600" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                            </div>
+                            <p class="mt-1 text-xs text-emerald-700" x-show="buscandoCnpj" x-cloak>Buscando a empresa na Receita Federal...</p>
+                            <p class="mt-1 text-xs text-emerald-700" x-show="cnpjPreenchido && !buscandoCnpj" x-cloak>Preenchemos com os dados da Receita Federal. Confira antes de emitir.</p>
+                            <p class="mt-1 text-xs text-amber-700" x-show="cnpjSituacao" x-cloak x-text="cnpjSituacao"></p>
+                            <p class="mt-1 text-xs text-gray-500" x-show="cnpjAviso" x-cloak x-text="cnpjAviso"></p>
                             @error('tomador_documento') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                         </div>
 
@@ -89,17 +100,15 @@
                             <label for="tomador_nome" class="mb-1.5 block text-sm font-medium text-gray-700">
                                 <span x-text="ehPj ? 'Razão social' : 'Nome completo'"></span> <span class="text-red-500">*</span>
                             </label>
-                            <input id="tomador_nome" name="tomador_nome" class="{{ $campo }}"
-                                   :placeholder="ehPj ? 'Como registrado na Receita' : 'Nome completo, como no documento'"
-                                   value="{{ old('tomador_nome', $modelo->tomador_nome ?? '') }}">
+                            <input id="tomador_nome" name="tomador_nome" class="{{ $campo }}" x-model="nome"
+                                   :placeholder="ehPj ? 'Como registrado na Receita' : 'Nome completo, como no documento'">
                             @error('tomador_nome') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                         </div>
 
                         <div class="sm:col-span-2">
                             <label for="tomador_email" class="mb-1.5 block text-sm font-medium text-gray-700">E-mail</label>
-                            <input id="tomador_email" name="tomador_email" type="email" class="{{ $campo }}"
-                                   placeholder="Para onde a nota vai (opcional)"
-                                   value="{{ old('tomador_email', $modelo->tomador_email ?? '') }}">
+                            <input id="tomador_email" name="tomador_email" type="email" class="{{ $campo }}" x-model="email"
+                                   placeholder="Para onde a nota vai (opcional)">
                         </div>
                     </div>
                 </div>
@@ -121,8 +130,7 @@
                         </div>
                         <div class="sm:col-span-2">
                             <label for="tomador_numero" class="mb-1.5 block text-sm font-medium text-gray-700">Número</label>
-                            <input id="tomador_numero" name="tomador_numero" class="{{ $campo }}" placeholder="123"
-                                   value="{{ old('tomador_numero', $modelo->tomador_numero ?? '') }}">
+                            <input id="tomador_numero" name="tomador_numero" class="{{ $campo }}" placeholder="123" x-model="numero">
                         </div>
                         <div class="sm:col-span-4">
                             <label for="tomador_bairro" class="mb-1.5 block text-sm font-medium text-gray-700">Bairro</label>
@@ -199,8 +207,11 @@
                 descricao: @js(old('descricao', $modelo->descricao ?? null)),
                 tipo: inicial.tipo,
                 documento: inicial.documento,
+                nome: @js(old('tomador_nome', $modelo->tomador_nome ?? '')),
+                email: @js(old('tomador_email', $modelo->tomador_email ?? '')),
                 cep: inicial.cep,
                 logradouro: @js(old('tomador_logradouro', $modelo->tomador_logradouro ?? '')),
+                numero: @js(old('tomador_numero', $modelo->tomador_numero ?? '')),
                 bairro: @js(old('tomador_bairro', $modelo->tomador_bairro ?? '')),
                 cidade: inicial.cidade,
                 uf: inicial.uf,
@@ -208,6 +219,14 @@
                 localNome: inicial.localNome,
                 localIbge: inicial.localIbge,
                 erroCep: '',
+                buscandoCnpj: false,
+                cnpjPreenchido: false,
+                cnpjSituacao: '',
+                cnpjAviso: '',
+                // O último CNPJ pedido, para o blur depois do colar não buscar
+                // de novo; e de qual CNPJ são os dados que estão na tela.
+                cnpjBuscado: '',
+                cnpjDosDados: (inicial.documento || '').toString().replace(/\D/g, ''),
 
                 init() {
                     this.documento = this.mascararDocumento(this.documento);
@@ -240,6 +259,9 @@
                 mudarTipo(tipo) {
                     this.tipo = tipo;
                     this.documento = this.mascararDocumento(this.documento);
+                    this.cnpjPreenchido = false;
+                    this.cnpjSituacao = '';
+                    this.cnpjAviso = '';
                 },
 
                 apenasDigitos(v) { return (v || '').toString().replace(/\D/g, ''); },
@@ -313,6 +335,69 @@
                         this.sugerirLocal();
                     } catch (e) {
                         this.erroCep = 'A busca de CEP não respondeu. Preencha na mão.';
+                    }
+                },
+
+                /**
+                 * Colou ou terminou de digitar o CNPJ: a Receita preenche o
+                 * cliente.
+                 *
+                 * Trocar de CNPJ é trocar de cliente, e aí o que a Receita traz
+                 * substitui o que havia. No mesmo CNPJ (repetir nota, por
+                 * exemplo) só completa o que está vazio, para não passar por
+                 * cima do que a pessoa corrigiu à mão. Falhou, a tela segue
+                 * editável: a busca é conveniência, não dependência.
+                 */
+                async consultarCnpj() {
+                    const cnpj = this.apenasDigitos(this.documento);
+                    if (!this.ehPj || cnpj.length !== 14 || cnpj === this.cnpjBuscado) return;
+
+                    const trocou = cnpj !== this.cnpjDosDados;
+                    if (!trocou && this.nome.trim()) return;
+
+                    this.cnpjBuscado = cnpj;
+                    this.buscandoCnpj = true;
+                    this.cnpjPreenchido = false;
+                    this.cnpjSituacao = '';
+                    this.cnpjAviso = '';
+
+                    try {
+                        const r = await fetch(`/consultas/cnpj/${cnpj}`, { headers: { Accept: 'application/json' } });
+                        // O documento mudou enquanto esperava: a resposta é de
+                        // outro cliente.
+                        if (this.apenasDigitos(this.documento) !== cnpj) return;
+                        if (r.status !== 200) { this.cnpjAviso = 'Não achamos esse CNPJ na Receita. Preencha na mão.'; return; }
+
+                        const d = await r.json();
+                        const por = (campo, valor) => {
+                            if (valor && (trocou || !String(this[campo] || '').trim())) this[campo] = valor;
+                        };
+
+                        por('nome', d.nome);
+                        por('email', d.email);
+                        por('cep', this.mascararCep(d.cep));
+                        por('logradouro', d.logradouro);
+                        por('numero', d.numero);
+                        por('bairro', d.bairro);
+                        por('cidade', d.cidade);
+                        por('uf', d.uf);
+                        por('ibge', d.ibge);
+
+                        this.cnpjDosDados = cnpj;
+                        this.cnpjPreenchido = true;
+                        if (d.situacao && d.situacao.toUpperCase() !== 'ATIVA') {
+                            this.cnpjSituacao = `Atenção: na Receita Federal este CNPJ consta como ${d.situacao}.`;
+                        }
+
+                        // A Receita grava a cidade em maiúsculas e sem acento
+                        // ("VITORIA"). O CEP traz o nome como a nota deve
+                        // mostrar, e o código do município junto.
+                        if (trocou && this.apenasDigitos(this.cep).length === 8) await this.buscarCep();
+                        else this.sugerirLocal();
+                    } catch (e) {
+                        this.cnpjAviso = 'A busca de CNPJ não respondeu. Preencha na mão.';
+                    } finally {
+                        this.buscandoCnpj = false;
                     }
                 },
             }));

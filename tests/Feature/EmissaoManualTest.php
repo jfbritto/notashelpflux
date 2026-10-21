@@ -232,4 +232,86 @@ class EmissaoManualTest extends TestCase
             ->assertOk()
             ->assertJson(['nome' => 'CLINICA EXEMPLO LTDA']);
     }
+
+    /** O BrasilAPI recusa com 429 com frequência; a mesma base vem da reserva. */
+    public function test_busca_de_cnpj_usa_a_reserva_quando_o_brasilapi_recusa(): void
+    {
+        Http::fake([
+            '*brasilapi*' => Http::response(['message' => 'Too Many Requests'], 429),
+            '*minhareceita*' => Http::response([
+                'razao_social' => 'CLINICA EXEMPLO LTDA',
+                'email' => 'Financeiro@Exemplo.test',
+                'descricao_tipo_de_logradouro' => 'AVENIDA',
+                'logradouro' => 'NOSSA SENHORA DA PENHA',
+                'numero' => '1000',
+                'bairro' => 'PRAIA DO CANTO',
+                'municipio' => 'VITORIA',
+                'uf' => 'ES',
+                'cep' => '29055-450',
+                'codigo_municipio_ibge' => 3205309,
+                'descricao_situacao_cadastral' => 'ATIVA',
+            ], 200),
+        ]);
+
+        $this->actingAs($this->emissora)
+            ->get(route('consultas.cnpj', ['cnpj' => '11222333000181']))
+            ->assertOk()
+            ->assertJson([
+                'nome' => 'CLINICA EXEMPLO LTDA',
+                'email' => 'financeiro@exemplo.test',
+                'logradouro' => 'AVENIDA NOSSA SENHORA DA PENHA',
+                'numero' => '1000',
+                'cep' => '29055450',
+                'ibge' => '3205309',
+                'situacao' => 'ATIVA',
+            ]);
+    }
+
+    public function test_logradouro_que_ja_traz_o_tipo_nao_o_repete(): void
+    {
+        Http::fake(['*brasilapi*' => Http::response([
+            'razao_social' => 'CLINICA EXEMPLO LTDA',
+            'descricao_tipo_de_logradouro' => 'RUA',
+            'logradouro' => 'RUA JOAO DA SILVA ABREU',
+        ], 200)]);
+
+        $this->actingAs($this->emissora)
+            ->get(route('consultas.cnpj', ['cnpj' => '11222333000181']))
+            ->assertJson(['logradouro' => 'RUA JOAO DA SILVA ABREU']);
+    }
+
+    /**
+     * Falha não fica guardada: com os dois fora do ar, a próxima tentativa
+     * consulta de novo, em vez de responder "não achei" o dia inteiro.
+     */
+    public function test_busca_de_cnpj_sem_resposta_responde_vazio_e_tenta_de_novo_depois(): void
+    {
+        Http::fakeSequence('*brasilapi*')
+            ->push(['message' => 'Too Many Requests'], 429)
+            ->push(['razao_social' => 'CLINICA EXEMPLO LTDA'], 200);
+        Http::fake(['*minhareceita*' => Http::response(['message' => 'fora do ar'], 503)]);
+
+        $this->actingAs($this->emissora)
+            ->get(route('consultas.cnpj', ['cnpj' => '11222333000181']))
+            ->assertNoContent();
+
+        $this->actingAs($this->emissora)
+            ->get(route('consultas.cnpj', ['cnpj' => '11222333000181']))
+            ->assertOk()
+            ->assertJson(['nome' => 'CLINICA EXEMPLO LTDA']);
+    }
+
+    /** O cliente recorrente não gasta a cota do serviço a cada nota. */
+    public function test_busca_de_cnpj_fica_guardada_por_um_dia(): void
+    {
+        Http::fake(['*brasilapi*' => Http::response(['razao_social' => 'CLINICA EXEMPLO LTDA'], 200)]);
+
+        foreach ([1, 2] as $vez) {
+            $this->actingAs($this->emissora)
+                ->get(route('consultas.cnpj', ['cnpj' => '11222333000181']))
+                ->assertJson(['nome' => 'CLINICA EXEMPLO LTDA']);
+        }
+
+        Http::assertSentCount(1);
+    }
 }
