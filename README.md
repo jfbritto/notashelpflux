@@ -46,7 +46,7 @@ No ar em notas.helpflux.com.br desde agosto/2026.
   `sync`, o envio é uma tentativa só, na hora.
 - **IBS/CBS** nos três perfis (`valores.ibscbs`), cada um com os valores de
   uma NFS-e real do Emissor Nacional para o mesmo serviço. A nutrição tem
-  tupla própria (alíquota reduzida, incidência no local da prestação).
+  tupla própria (alíquota reduzida, IBS incidindo em Santa Maria de Jetibá).
 
 Feito em 13/10/2026: a virada do TreinaEdu (spec §6 e §10) e o Hotel em Dia
 ligado. Falta conferir a primeira nota real do TreinaEdu de ponta a ponta,

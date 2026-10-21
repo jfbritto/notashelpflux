@@ -161,7 +161,8 @@ class PayloadDaNotaTest extends TestCase
     /**
      * Conferido contra a NFS-e nº 26 do portal nacional (05/10/2026). Não é
      * a tupla do software: saúde tem alíquota reduzida (CST 200, cClassTrib
-     * 200029) e incidência no local da prestação (cIndOp 030101).
+     * 200029) e indicador próprio (cIndOp 030101), com o IBS incidindo em
+     * Santa Maria de Jetibá qualquer que seja o local da prestação.
      */
     public function test_a_nota_de_nutricao_leva_o_grupo_ibscbs_da_nota_do_portal(): void
     {

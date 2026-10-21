@@ -158,7 +158,10 @@ contra a NFS-e nº 25 emitida no portal em 23/09/2026 (cTribNac 01.01.01, NBS
 ele, e a comparação com a do portal mostrou a diferença. No mesmo dia a
 `nutricao` ganhou o seu, conferido contra a NFS-e nº 26 de 05/10/2026, com
 tupla própria: CST `200`, cClassTrib `200029` (redução de 60%) e cIndOp
-`030101`, que põe a incidência no local da prestação.
+`030101`. A primeira nota de nutrição pela plataforma (nº 42, 21/10/2026)
+confirmou o grupo e corrigiu uma suposição: com esse indicador o IBS incide em
+Santa Maria de Jetibá mesmo com o atendimento em São Paulo, e não no local da
+prestação.
 
 ### 4.3 A tabela `aplicacoes`
 
