@@ -159,13 +159,32 @@ class PayloadDaNotaTest extends TestCase
     }
 
     /**
-     * Na nutrição a combinação não foi conferida contra nota real. Sem o
-     * grupo, vale o que a Notaas resolver; com um chute, sairia uma nota com
-     * enquadramento que ninguém escolheu.
+     * Conferido contra a NFS-e nº 26 do portal nacional (05/10/2026). Não é
+     * a tupla do software: saúde tem alíquota reduzida (CST 200, cClassTrib
+     * 200029) e incidência no local da prestação (cIndOp 030101).
      */
-    public function test_a_nutricao_nao_manda_ibscbs(): void
+    public function test_a_nota_de_nutricao_leva_o_grupo_ibscbs_da_nota_do_portal(): void
     {
         $valores = (new PayloadDaNota)->montar(Nota::factory()->create(['perfil' => 'nutricao']))['valores'];
+
+        $this->assertSame([
+            'cst' => '200',
+            'classificacaoTributaria' => '200029',
+            'indicadorOperacao' => '030101',
+            'nbs' => '123019900',
+        ], $valores['ibscbs']);
+    }
+
+    /**
+     * Perfil novo, ainda sem nota real para conferir, não manda o grupo. Sem
+     * ele, vale o que a Notaas resolver; com um chute, sairia uma nota com
+     * enquadramento que ninguém escolheu.
+     */
+    public function test_perfil_sem_ibscbs_conferido_nao_manda_o_grupo(): void
+    {
+        config(['fiscal.perfis.novo' => array_diff_key(config('fiscal.perfis.nutricao'), ['ibscbs' => true])]);
+
+        $valores = (new PayloadDaNota)->montar(Nota::factory()->create(['perfil' => 'novo']))['valores'];
 
         $this->assertArrayNotHasKey('ibscbs', $valores);
         // O resto do grupo de valores segue igual.
