@@ -91,10 +91,17 @@ class VerificacaoManualTest extends TestCase
         $this->assertSame('emitida', $nota->refresh()->status);
     }
 
-    /** Nota sem nada pendente não tem o que verificar: nem chega a consultar o emissor. */
+    /**
+     * Nota sem nada pendente não tem o que verificar: nem chega a consultar o
+     * emissor. Emitida com PDF e XML; sem eles, há o que buscar.
+     */
     public function test_nota_sem_nada_pendente_e_recusada(): void
     {
-        $nota = Nota::factory()->emitida()->create(['notaas_invoice_id' => 'abc-1']);
+        $nota = Nota::factory()->emitida()->create([
+            'notaas_invoice_id' => 'abc-1',
+            'pdf_url' => 'https://storage.notaas.test/n.pdf',
+            'xml_url' => 'https://storage.notaas.test/n.xml',
+        ]);
 
         $this->actingAs(User::factory()->create())
             ->post(route('notas.verificar', $nota))
@@ -138,5 +145,37 @@ class VerificacaoManualTest extends TestCase
         $this->actingAs(User::factory()->create(['papel' => 'emissor']))
             ->post(route('notas.verificar', $nota))
             ->assertForbidden();
+    }
+
+    /** "Buscar PDF": a nota emitida que ficou sem documento. */
+    public function test_busca_o_pdf_da_nota_emitida_sem_documento(): void
+    {
+        $nota = Nota::factory()->emitida()->create(['notaas_invoice_id' => 'abc-1']);
+        EmissorFalso::responderConsultaCom([
+            'status' => 'emitida',
+            'pdf_url' => 'https://storage.notaas.test/n.pdf',
+            'xml_url' => 'https://storage.notaas.test/n.xml',
+        ]);
+
+        $this->actingAs(User::factory()->create())
+            ->post(route('notas.verificar', $nota))
+            ->assertSessionHas('sucesso', fn ($m) => str_contains($m, 'PDF'));
+
+        $nota->refresh();
+        $this->assertSame('emitida', $nota->status);
+        $this->assertSame('https://storage.notaas.test/n.pdf', $nota->pdf_url);
+    }
+
+    public function test_pdf_ainda_nao_pronto_avisa_e_nao_muda_nada(): void
+    {
+        $nota = Nota::factory()->emitida()->create(['notaas_invoice_id' => 'abc-1']);
+        EmissorFalso::responderConsultaCom(['status' => 'emitida']);
+
+        $this->actingAs(User::factory()->create())
+            ->post(route('notas.verificar', $nota))
+            ->assertSessionHas('sucesso', fn ($m) => str_contains($m, 'ainda não terminou'));
+
+        $this->assertNull($nota->refresh()->pdf_url);
+        $this->assertSame('emitida', $nota->status);
     }
 }

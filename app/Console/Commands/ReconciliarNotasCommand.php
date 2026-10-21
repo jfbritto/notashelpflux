@@ -49,7 +49,21 @@ class ReconciliarNotasCommand extends Command
             ->where('cancelamento_solicitado_em', '<=', $corte)
             ->get();
 
-        if ($emissaoPendente->isEmpty() && $cancelamentoPendente->isEmpty()) {
+        // Emitida sem documento. A consulta que fechou a nota pode chegar
+        // antes de a Notaas guardar o PDF e o XML (documentsCached=false), e
+        // o nfse.documents_ready, que traria os links, ela desiste de mandar
+        // depois das tentativas dela. Sem ir atrás, a nota fica emitida e sem
+        // PDF para sempre: foi o que aconteceu com uma nota de nutrição em
+        // 21/10/2026. Só no primeiro dia: a Notaas guarda os documentos em
+        // minutos, e depois disso consultar a cada 5 minutos não traz nada.
+        $semDocumento = Nota::where('status', 'emitida')
+            ->whereNotNull('notaas_invoice_id')
+            ->whereNull('cancelamento_solicitado_em')
+            ->where(fn ($q) => $q->whereNull('pdf_url')->orWhereNull('xml_url'))
+            ->whereBetween('emitida_em', [now()->subDay(), $corte])
+            ->get();
+
+        if ($emissaoPendente->isEmpty() && $cancelamentoPendente->isEmpty() && $semDocumento->isEmpty()) {
             $this->info('Nada pendente.');
 
             return self::SUCCESS;
@@ -106,9 +120,25 @@ class ReconciliarNotasCommand extends Command
             $this->line("  nota {$nota->id}: cancelamento confirmado");
         }
 
+        $anexadas = 0;
+
+        foreach ($semDocumento as $nota) {
+            if ($this->option('dry')) {
+                $this->line("  nota {$nota->id}: consultaria documentos ({$nota->notaas_invoice_id})");
+
+                continue;
+            }
+
+            if ($fecharNota->anexarDocumentos($nota, $emissor->consultar($nota->notaas_invoice_id))) {
+                $anexadas++;
+                $this->line("  nota {$nota->id}: documentos anexados");
+            }
+        }
+
         $this->info(
             "{$emissaoPendente->count()} emissão(ões) conferida(s): {$fechadas} fechada(s), {$comErro} com erro. "
-            ."{$cancelamentoPendente->count()} cancelamento(s) conferido(s): {$confirmadas} confirmado(s)."
+            ."{$cancelamentoPendente->count()} cancelamento(s) conferido(s): {$confirmadas} confirmado(s). "
+            ."{$semDocumento->count()} sem documento: {$anexadas} anexada(s)."
         );
 
         return self::SUCCESS;

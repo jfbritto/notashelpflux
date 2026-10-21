@@ -201,4 +201,26 @@ class ListaDeNotasTest extends TestCase
             ->assertOk()
             ->assertDontSee('Repetindo a nota', false);
     }
+
+    /** Sem o botão, a nota emitida sem PDF não tinha como buscá-lo. */
+    public function test_nota_emitida_sem_pdf_mostra_buscar_pdf(): void
+    {
+        Nota::factory()->emitida()->create(['notaas_invoice_id' => 'abc-1']);
+
+        $this->actingAs(User::factory()->create())
+            ->get(route('notas.index'))
+            ->assertSee('Buscar PDF');
+    }
+
+    public function test_nota_emitida_com_pdf_nao_mostra_buscar_pdf(): void
+    {
+        Nota::factory()->emitida()->create([
+            'notaas_invoice_id' => 'abc-1',
+            'pdf_url' => 'https://storage.notaas.test/n.pdf',
+        ]);
+
+        $this->actingAs(User::factory()->create())
+            ->get(route('notas.index'))
+            ->assertDontSee('Buscar PDF');
+    }
 }
