@@ -113,7 +113,9 @@ então o índice não atrapalha a emissão avulsa.
 ### 4.2 Perfis de serviço
 
 Ficam em `config/fiscal.php`, versionados, não numa tela. São dados fiscais que
-mudam raramente e erram caro.
+mudam raramente e erram caro. O bloco abaixo é o esboço original; o config
+atual tem também o perfil `desenvolvimento` (1.01) e o NBS de `software`, e é
+ele que vale.
 
 ```php
 'perfis' => [
@@ -326,6 +328,10 @@ Nada do resto muda: `EmitNfseJob`, `NfseNotifier`, a tela de notas do cliente e
 os testes que usam o `FakeNfseDriver` continuam iguais. **Rollback é trocar
 `NFSE_DRIVER` de volta para `notaas`.**
 
+**Implementado (13/10/2026, PR #930 do TreinaEdu).** `PlataformaNfseDriver`
+com a referência `inv-<payment_id>`, e o retorno em
+`/nfse/plataforma/webhook`, que recusa tudo quando o segredo está vazio.
+
 ---
 
 ## 7. A tela de emissão manual
@@ -405,7 +411,7 @@ Do lado do TreinaEdu, o `PlataformaNfseDriver` ganha o mesmo tratamento que o
 
 ## 10. Deploy e a virada
 
-Laravel 11 com Vite e Tailwind, mesma estrutura do TreinaEdu, no diretório
+Laravel 13 com Vite e Tailwind, mesma estrutura do TreinaEdu, no diretório
 `/Users/joaofilipibritto/Projetos/notashelpflux`, repositório próprio. Na VPS
 vira `notas.helpflux.com.br`: nginx, php-fpm, banco próprio, deploy por GitHub
 Actions rodando script como usuário `deploy`, igual aos outros.
@@ -422,6 +428,12 @@ sozinha. A ordem é:
    migrado.
 
 Faz-se isso quando não houver nota em `processando` no TreinaEdu.
+
+**Feita em 13/10/2026**, com uma diferença do roteiro: em vez de mover o
+webhook, a conta da Notaas ganhou um segundo endpoint, e o do TreinaEdu
+continua lá para fechar as notas emitidas pelo caminho antigo. O daqui só
+passou a responder com o PR #6. O que falta está em `docs/deploy.md`, "A virada
+do TreinaEdu".
 
 ---
 
