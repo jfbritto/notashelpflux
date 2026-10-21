@@ -155,8 +155,10 @@ tupla fora do Anexo VIII, e o Simples Nacional está dispensado em 2026.
 **21/10/2026.** O perfil `desenvolvimento` ganhou o mesmo grupo, conferido
 contra a NFS-e nº 25 emitida no portal em 23/09/2026 (cTribNac 01.01.01, NBS
 1.1502.20.00). A primeira nota de desenvolvimento pela plataforma saiu sem
-ele, e a comparação com a do portal mostrou a diferença. Só a nutrição segue
-sem o grupo.
+ele, e a comparação com a do portal mostrou a diferença. No mesmo dia a
+`nutricao` ganhou o seu, conferido contra a NFS-e nº 26 de 05/10/2026, com
+tupla própria: CST `200`, cClassTrib `200029` (redução de 60%) e cIndOp
+`030101`, que põe a incidência no local da prestação.
 
 ### 4.3 A tabela `aplicacoes`
 
@@ -408,7 +410,7 @@ Caminhos cobertos:
 | `documents_ready` vira `nota.documentos`, anexa links e não muda o status | PHPUnit (`RetornoAplicacaoTest`) |
 | Local da prestação diferente do prestador chega no payload | PHPUnit (`PayloadDaNotaTest`) |
 | `GET` de referência de outra origem responde 404 | PHPUnit (`ApiNotasTest`) |
-| `ibscbs` vai no payload do software e do desenvolvimento, e não no da nutrição | PHPUnit (`PayloadDaNotaTest`) |
+| `ibscbs` de cada perfil vai no payload com a tupla da sua nota real; perfil sem tupla conferida não manda o grupo | PHPUnit (`PayloadDaNotaTest`) |
 
 Do lado do TreinaEdu, o `PlataformaNfseDriver` ganha o mesmo tratamento que o
 `NotaasNfseDriver` tem em `treinaedu:tests/Feature/Billing/NfseNotaasTest.php`.

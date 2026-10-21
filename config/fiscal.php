@@ -88,13 +88,14 @@ return [
              * serviço (cTribNac 01.05.01, NBS 1.1103.22.00): CST 000
              * (tributação integral), cClassTrib 000001, cIndOp 100501.
              *
-             * Este perfil e o de desenvolvimento têm o grupo. No de nutrição
-             * a combinação NBS + indicador + classificação não foi conferida
-             * contra nota real, e a Notaas exige que ela forme uma tupla
-             * válida do Anexo VIII (recusa com 400 quando há mais de um
-             * enquadramento e ninguém escolheu). Mandar um palpite é pior do que deixar a Notaas
-             * resolver; e o Simples Nacional está dispensado de destacar
-             * IBS/CBS em 2026. O NBS que vai no grupo é o do próprio perfil,
+             * Os três perfis têm o grupo, cada um copiado de uma nota real do
+             * seu serviço: a combinação NBS + indicador + classificação muda
+             * de serviço para serviço, e a Notaas exige que ela forme uma
+             * tupla válida do Anexo VIII (recusa com 400 quando há mais de um
+             * enquadramento e ninguém escolheu). Perfil novo só ganha o grupo
+             * depois de conferido contra nota real: mandar um palpite é pior
+             * do que deixar a Notaas resolver; e o Simples Nacional está
+             * dispensado de destacar IBS/CBS em 2026. O NBS que vai no grupo é o do próprio perfil,
              * acima: os dois não podem divergir.
              */
             'ibscbs' => [
@@ -140,6 +141,13 @@ return [
         /*
          * Atendimento nutricional. Códigos conferidos contra a DANFSe de
          * 06/08/2026.
+         *
+         * IBS/CBS copiado da NFS-e nº 26 emitida no portal nacional em
+         * 05/10/2026 (04.10.01, NBS 1.2301.99.00). NÃO é a tupla do software:
+         * CST 200 (alíquota reduzida), cClassTrib 200029 (redução de 60%) e
+         * cIndOp 030101, que põe a incidência no LOCAL DA PRESTAÇÃO (naquela
+         * nota, Santa Maria de Jetibá). Por isso escolher bem "onde o
+         * atendimento foi feito" passa a decidir também onde o IBS incide.
          */
         'nutricao' => [
             'rotulo' => 'Atendimento nutricional',
@@ -150,6 +158,11 @@ return [
             'local_prestacao_padrao' => 'tomador',
             'aliquota' => 2.01,
             'manual' => true,
+            'ibscbs' => [
+                'cst' => '200',
+                'classificacao_tributaria' => '200029',
+                'indicador_operacao' => '030101',
+            ],
         ],
     ],
 ];
