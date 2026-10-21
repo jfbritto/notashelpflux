@@ -145,9 +145,11 @@ return [
          * IBS/CBS copiado da NFS-e nº 26 emitida no portal nacional em
          * 05/10/2026 (04.10.01, NBS 1.2301.99.00). NÃO é a tupla do software:
          * CST 200 (alíquota reduzida), cClassTrib 200029 (redução de 60%) e
-         * cIndOp 030101, que põe a incidência no LOCAL DA PRESTAÇÃO (naquela
-         * nota, Santa Maria de Jetibá). Por isso escolher bem "onde o
-         * atendimento foi feito" passa a decidir também onde o IBS incide.
+         * cIndOp 030101. Com ele o IBS incide em Santa Maria de Jetibá mesmo
+         * quando o local da prestação é outro: a nº 42 (21/10/2026), a
+         * primeira pela plataforma, saiu com atendimento em São Paulo e
+         * incidência em Santa Maria, como a nº 26. O local da prestação não
+         * muda onde o IBS (nem o ISS) é devido.
          */
         'nutricao' => [
             'rotulo' => 'Atendimento nutricional',
