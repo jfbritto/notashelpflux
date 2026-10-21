@@ -141,19 +141,35 @@ class PayloadDaNotaTest extends TestCase
     }
 
     /**
-     * Nos outros perfis a combinação não foi conferida contra nota real.
-     * Sem o grupo, vale o que a Notaas resolver; com um chute, sairia uma
-     * nota com enquadramento que ninguém escolheu.
+     * Conferido contra a NFS-e nº 25 do portal nacional (23/09/2026): sem o
+     * grupo, a nota da plataforma saiu com IBS/CBS e "Finalidade" em branco,
+     * diferente da emitida à mão para o mesmo serviço. O NBS do grupo é o do
+     * perfil de desenvolvimento, não o do software.
      */
-    public function test_os_outros_perfis_nao_mandam_ibscbs(): void
+    public function test_a_nota_de_desenvolvimento_leva_o_grupo_ibscbs_da_nota_do_portal(): void
     {
-        foreach (['nutricao', 'desenvolvimento'] as $perfil) {
-            $valores = (new PayloadDaNota)->montar(Nota::factory()->create(['perfil' => $perfil]))['valores'];
+        $valores = (new PayloadDaNota)->montar(Nota::factory()->create(['perfil' => 'desenvolvimento']))['valores'];
 
-            $this->assertArrayNotHasKey('ibscbs', $valores, "o perfil {$perfil} não deveria mandar ibscbs");
-            // O resto do grupo de valores segue igual.
-            $this->assertSame(['total', 'aliquotaIss', 'issRetido'], array_keys($valores));
-        }
+        $this->assertSame([
+            'cst' => '000',
+            'classificacaoTributaria' => '000001',
+            'indicadorOperacao' => '100501',
+            'nbs' => '115022000',
+        ], $valores['ibscbs']);
+    }
+
+    /**
+     * Na nutrição a combinação não foi conferida contra nota real. Sem o
+     * grupo, vale o que a Notaas resolver; com um chute, sairia uma nota com
+     * enquadramento que ninguém escolheu.
+     */
+    public function test_a_nutricao_nao_manda_ibscbs(): void
+    {
+        $valores = (new PayloadDaNota)->montar(Nota::factory()->create(['perfil' => 'nutricao']))['valores'];
+
+        $this->assertArrayNotHasKey('ibscbs', $valores);
+        // O resto do grupo de valores segue igual.
+        $this->assertSame(['total', 'aliquotaIss', 'issRetido'], array_keys($valores));
     }
 
     public function test_pessoa_fisica_vai_como_cpf_e_juridica_como_cnpj(): void

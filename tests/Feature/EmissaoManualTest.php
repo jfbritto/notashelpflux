@@ -175,6 +175,18 @@ class EmissaoManualTest extends TestCase
         $this->assertSame(0, Nota::count());
     }
 
+    /** "CONJ 107" estava na nota do portal e faltava na da plataforma. */
+    public function test_o_complemento_do_endereco_vai_para_a_nota(): void
+    {
+        $this->actingAs($this->emissora)
+            ->post(route('notas.store'), $this->formulario(['tomador_complemento' => 'CONJ 107']))
+            ->assertSessionHasNoErrors();
+
+        $nota = Nota::first();
+        $this->assertSame('CONJ 107', $nota->tomador_complemento);
+        $this->assertSame('CONJ 107', (new PayloadDaNota)->montar($nota)['tomador']['endereco']['complemento']);
+    }
+
     /** O valor chega da tela com a máscara de reais. */
     public function test_valor_com_mascara_de_reais_vira_numero(): void
     {
@@ -261,6 +273,7 @@ class EmissaoManualTest extends TestCase
                 'descricao_tipo_de_logradouro' => 'AVENIDA',
                 'logradouro' => 'NOSSA SENHORA DA PENHA',
                 'numero' => '1000',
+                'complemento' => 'CONJ 107',
                 'bairro' => 'PRAIA DO CANTO',
                 'municipio' => 'VITORIA',
                 'uf' => 'ES',
@@ -278,6 +291,7 @@ class EmissaoManualTest extends TestCase
                 'email' => 'financeiro@exemplo.test',
                 'logradouro' => 'AVENIDA NOSSA SENHORA DA PENHA',
                 'numero' => '1000',
+                'complemento' => 'CONJ 107',
                 'cep' => '29055450',
                 'ibge' => '3205309',
                 'situacao' => 'ATIVA',

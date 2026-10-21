@@ -88,11 +88,11 @@ return [
              * serviço (cTribNac 01.05.01, NBS 1.1103.22.00): CST 000
              * (tributação integral), cClassTrib 000001, cIndOp 100501.
              *
-             * Só este perfil tem o grupo. Nos outros a combinação NBS +
-             * indicador + classificação não foi conferida contra nota real,
-             * e a Notaas exige que ela forme uma tupla válida do Anexo VIII
-             * (recusa com 400 quando há mais de um enquadramento e ninguém
-             * escolheu). Mandar um palpite é pior do que deixar a Notaas
+             * Este perfil e o de desenvolvimento têm o grupo. No de nutrição
+             * a combinação NBS + indicador + classificação não foi conferida
+             * contra nota real, e a Notaas exige que ela forme uma tupla
+             * válida do Anexo VIII (recusa com 400 quando há mais de um
+             * enquadramento e ninguém escolheu). Mandar um palpite é pior do que deixar a Notaas
              * resolver; e o Simples Nacional está dispensado de destacar
              * IBS/CBS em 2026. O NBS que vai no grupo é o do próprio perfil,
              * acima: os dois não podem divergir.
@@ -112,16 +112,29 @@ return [
          * mesmo "análise e desenvolvimento de sistemas". Antes deste
          * documento aparecer, este item estava marcado como pendente de
          * confirmação com a contabilidade; a nota real resolve a dúvida.
+         *
+         * Descrição e IBS/CBS copiados da NFS-e nº 25 emitida no portal
+         * nacional em 23/09/2026 (ALL IN CRED, 01.01.01, NBS 1.1502.20.00):
+         * a primeira nota de desenvolvimento pela plataforma (nº 41,
+         * 21/10/2026) saiu sem o grupo IBS/CBS e com "Finalidade" em branco,
+         * diferente da do portal. Mesma tupla do software (CST 000,
+         * cClassTrib 000001, cIndOp 100501), agora conferida contra nota real
+         * deste serviço.
          */
         'desenvolvimento' => [
             'rotulo' => 'Desenvolvimento de sistemas',
             'item_lista_servico' => '1.01',
             'codigo_tributacao_nacional' => '010101',
             'nbs' => '1.1502.20.00',
-            'descricao_padrao' => 'Serviços de análise e desenvolvimento de sistemas',
+            'descricao_padrao' => 'Análise e desenvolvimento de sistemas.',
             'local_prestacao_padrao' => 'prestador',
             'aliquota' => 2.01,
             'manual' => true,
+            'ibscbs' => [
+                'cst' => '000',
+                'classificacao_tributaria' => '000001',
+                'indicador_operacao' => '100501',
+            ],
         ],
 
         /*
