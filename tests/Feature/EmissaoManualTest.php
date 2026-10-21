@@ -175,6 +175,23 @@ class EmissaoManualTest extends TestCase
         $this->assertSame(0, Nota::count());
     }
 
+    /** O valor chega da tela com a máscara de reais. */
+    public function test_valor_com_mascara_de_reais_vira_numero(): void
+    {
+        $this->actingAs($this->emissora)
+            ->post(route('notas.store'), $this->formulario(['valor' => 'R$ 12.345,67']))
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame('12345.67', Nota::first()->valor);
+    }
+
+    public function test_valor_zerado_com_mascara_tambem_e_recusado(): void
+    {
+        $this->actingAs($this->emissora)
+            ->post(route('notas.store'), $this->formulario(['valor' => '0,00']))
+            ->assertSessionHasErrors('valor');
+    }
+
     /** Documento inválido derruba a emissão lá na frente, na prefeitura. */
     public function test_documento_invalido_e_recusado(): void
     {

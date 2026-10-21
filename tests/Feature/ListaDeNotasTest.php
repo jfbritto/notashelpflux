@@ -32,6 +32,18 @@ class ListaDeNotasTest extends TestCase
             ->assertSee('https://storage.notaas.test/n.pdf');
     }
 
+    /** A coluna guarda só os dígitos; a lista mostra o documento como se lê. */
+    public function test_a_lista_mostra_o_documento_do_cliente_com_mascara(): void
+    {
+        Nota::factory()->create(['tomador_tipo' => 'pj', 'tomador_documento' => '11222333000181']);
+        Nota::factory()->create(['tomador_tipo' => 'pf', 'tomador_documento' => '52998224725']);
+
+        $this->actingAs(User::factory()->create())
+            ->get(route('notas.index'))
+            ->assertSee('11.222.333/0001-81')
+            ->assertSee('529.982.247-25');
+    }
+
     /**
      * Nota recusada não pode se passar por pendente. No TreinaEdu isso
      * escondeu uma nota parada por um dia: quem olhava a tela para entender o

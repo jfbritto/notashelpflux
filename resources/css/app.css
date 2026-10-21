@@ -1,3 +1,41 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Sem isto o x-cloak não esconde nada, e avisos como "Buscando a empresa..."
+   piscam na tela até o Alpine carregar. */
+[x-cloak] {
+    display: none !important;
+}
+
+@layer components {
+    /*
+     * A borda serrilhada do recibo, a identidade da plataforma: embaixo do
+     * topo verde das telas e do cartão do login. É um dente de 16px repetido,
+     * com a cor de quem está em cima (emerald-900 ou branco), porque SVG em
+     * data URI não lê variável de CSS.
+     */
+    .borda-de-recibo,
+    .borda-de-recibo-clara {
+        position: relative;
+    }
+
+    .borda-de-recibo::after,
+    .borda-de-recibo-clara::after {
+        content: '';
+        position: absolute;
+        inset-inline: 0;
+        top: 100%;
+        height: 8px;
+        background-repeat: repeat-x;
+        pointer-events: none;
+    }
+
+    .borda-de-recibo::after {
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='8' viewBox='0 0 16 8'%3E%3Cpath d='M0 0h16L8 8z' fill='%23064e3b'/%3E%3C/svg%3E");
+    }
+
+    .borda-de-recibo-clara::after {
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='8' viewBox='0 0 16 8'%3E%3Cpath d='M0 0h16L8 8z' fill='%23ffffff'/%3E%3C/svg%3E");
+    }
+}
