@@ -55,6 +55,21 @@ class AplicacoesCommandTest extends TestCase
         $this->withHeaders(['x-api-key' => $chave])->getJson('/api/notas')->assertOk();
     }
 
+    /**
+     * O HelpCheck (06/11/2026) emite como o TreinaEdu: assinatura de
+     * software, com o local da prestação no município da emissora.
+     */
+    public function test_helpcheck_e_uma_origem_de_software(): void
+    {
+        [$codigo] = $this->criar('HelpCheck', 'helpcheck', 'software', 'https://helpcheck.com.br/webhooks/notas');
+
+        $this->assertSame(0, $codigo);
+        $aplicacao = Aplicacao::sole();
+        $this->assertSame('helpcheck', $aplicacao->origem);
+        $this->assertSame('software', $aplicacao->perfil);
+        $this->assertSame('HelpCheck', config('fiscal.origens.helpcheck'));
+    }
+
     /** `manual` é a tela; uma aplicação com ela misturaria as notas da emissora com as da API. */
     public function test_origem_manual_ou_desconhecida_e_recusada(): void
     {
