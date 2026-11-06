@@ -50,6 +50,7 @@ return [
         'treinaedu' => 'TreinaEdu',
         'helpdiet' => 'HelpDiet',
         'hotelemdia' => 'Hotel em Dia',
+        'helpcheck' => 'HelpCheck',
     ],
 
     /*
